@@ -3,7 +3,6 @@ import { useReviewStore } from '@/store/review-store';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { SUITE_LABELS } from '@/lib/types';
 import { SliderView } from './SliderView';
 import { SideBySideView } from './SideBySideView';
 import {
@@ -121,8 +120,7 @@ export function ComparisonModal() {
           </Button>
           <span className="text-sm font-semibold flex-1 min-w-0 truncate">{diff.description}</span>
           <div className="flex gap-1">
-            <Badge variant="secondary" className="text-[10px]">{SUITE_LABELS[diff.suite] || diff.suite}</Badge>
-            <Badge variant="secondary" className="text-[10px] bg-blue-950 text-blue-300">{diff.retailer}</Badge>
+            <Badge variant="secondary" className="text-[10px]">{diff.suite}</Badge>
             <Badge variant="secondary" className="text-[10px]">
               {diff.viewport === 'phone' ? <Smartphone className="h-3 w-3 mr-0.5" /> : <Monitor className="h-3 w-3 mr-0.5" />}
               {diff.viewport === 'phone' ? 'Mobile' : 'Desktop'}

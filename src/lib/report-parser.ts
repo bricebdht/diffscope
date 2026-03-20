@@ -1,8 +1,6 @@
 import { zipExtract, zipList } from './zip';
 import { countDiffPixels } from './png';
 import type { DiffEntry } from './types';
-import { SUITES, RETAILERS } from './types';
-
 interface PlaywrightAttachment {
   name: string;
   path?: string;
@@ -38,19 +36,8 @@ function hashCode(str: string): string {
   return Math.abs(hash).toString(16).slice(0, 8).padStart(8, '0');
 }
 
-function parseFileName(baseName: string): { retailer: string; index: string; description: string } {
-  const parts = baseName.split('-');
-  let retailer = 'unknown';
-  let index = '00';
-  let description = baseName;
-
-  const retailers = RETAILERS as readonly string[];
-  if (parts.length >= 2 && retailers.includes(parts[0].toLowerCase())) {
-    retailer = parts[0].toLowerCase();
-    index = parts[1];
-    description = parts.slice(2).join('-') || baseName;
-  }
-  return { retailer, index, description };
+function parseFileName(baseName: string): { description: string } {
+  return { description: baseName };
 }
 
 function createBlobUrl(data: Uint8Array, contentType: string): string {
@@ -98,11 +85,8 @@ async function buildDiffs(
 
   for (const file of (report.files || [])) {
     const fileName = file.fileName || '';
-    let suite = 'unknown';
-    const suitesArr = SUITES as readonly string[];
-    for (const s of suitesArr) {
-      if (fileName.includes(s)) { suite = s; break; }
-    }
+    // Derive suite from spec filename (e.g. "full-pages.spec.ts" → "full-pages")
+    const suite = fileName.replace(/\.spec\.\w+$/, '') || 'unknown';
 
     for (const test of (file.tests || [])) {
       for (const result of (test.results || [])) {
@@ -127,12 +111,10 @@ async function buildDiffs(
           id,
           baseName,
           suite,
-          retailer: fileMeta.retailer,
           viewport,
           description: fileMeta.description,
-          index: fileMeta.index,
           hasDiff: true,
-          pixelCount: null, // computed lazily below for perf
+          pixelCount: null,
           diffBlob,
           actualBlob,
           expectedBlob,
@@ -142,16 +124,11 @@ async function buildDiffs(
     }
   }
 
-  // Sort: diffs first, then by suite order, retailer, index
-  const suiteOrder = [...SUITES, 'unknown'];
-  const retailerOrder = [...RETAILERS, 'unknown'];
+  // Sort: diffs first, then by suite, then description
   diffs.sort((a, b) => {
     if (a.hasDiff !== b.hasDiff) return a.hasDiff ? -1 : 1;
-    const si = suiteOrder.indexOf(a.suite) - suiteOrder.indexOf(b.suite);
+    const si = a.suite.localeCompare(b.suite);
     if (si !== 0) return si;
-    const ri = retailerOrder.indexOf(a.retailer) - retailerOrder.indexOf(b.retailer);
-    if (ri !== 0) return ri;
-    if (a.index !== b.index) return a.index.localeCompare(b.index);
     return a.description.localeCompare(b.description);
   });
 

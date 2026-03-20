@@ -25,7 +25,6 @@ export type CompareMode = 'sidebyside' | 'slider';
 
 export interface Filters {
   suite: string;
-  retailer: string;
   viewport: string;
   status: string;
   search: string;
@@ -45,6 +44,7 @@ interface ReviewStore {
 
   // Computed
   filteredDiffs: DiffEntry[];
+  availableSuites: string[];
 
   // Actions
   setDiffs: (diffs: DiffEntry[]) => void;
@@ -64,7 +64,6 @@ interface ReviewStore {
 
 const defaultFilters: Filters = {
   suite: '',
-  retailer: '',
   viewport: '',
   status: '',
   search: '',
@@ -75,7 +74,6 @@ function applyFilters(diffs: DiffEntry[], filters: Filters, reviewState: ReviewS
   return diffs.filter(d => {
     if (filters.diffsOnly && !d.hasDiff) return false;
     if (filters.suite && d.suite !== filters.suite) return false;
-    if (filters.retailer && d.retailer !== filters.retailer) return false;
     if (filters.viewport && d.viewport !== filters.viewport) return false;
     if (filters.status) {
       const s = reviewState.diffs[d.id]?.status || 'pending';
@@ -85,7 +83,7 @@ function applyFilters(diffs: DiffEntry[], filters: Filters, reviewState: ReviewS
     }
     if (filters.search) {
       const q = filters.search.toLowerCase();
-      const haystack = `${d.description} ${d.retailer} ${d.suite} ${d.viewport}`.toLowerCase();
+      const haystack = `${d.description} ${d.suite} ${d.viewport}`.toLowerCase();
       if (!haystack.includes(q)) return false;
     }
     return true;
@@ -100,11 +98,13 @@ export const useReviewStore = create<ReviewStore>((set, get) => ({
   compareMode: 'sidebyside',
   reviewedSectionOpen: false,
   filteredDiffs: [],
+  availableSuites: [],
 
   setDiffs: (diffs) => {
     const state = get();
     const filteredDiffs = applyFilters(diffs, state.filters, state.reviewState);
-    set({ diffs, filteredDiffs });
+    const availableSuites = [...new Set(diffs.map(d => d.suite))].sort();
+    set({ diffs, filteredDiffs, availableSuites });
   },
 
   setFilter: (key, value) => {

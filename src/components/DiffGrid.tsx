@@ -1,17 +1,14 @@
 import { useReviewStore } from '@/store/review-store';
 import { DiffCard } from './DiffCard';
-import { SUITE_LABELS } from '@/lib/types';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import type { DiffEntry } from '@/lib/types';
-
-const SUITE_ORDER = ['full-pages', 'challenges-components', 'modals', 'global-architecture', 'unknown'];
 
 function SuiteGroup({ suite, items, onCardClick }: {
   suite: string;
   items: DiffEntry[];
   onCardClick: (diff: DiffEntry) => void;
 }) {
-  const label = SUITE_LABELS[suite] || suite;
+  const label = suite;
   return (
     <div className="mb-7">
       <div className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
@@ -64,11 +61,9 @@ export function DiffGrid() {
           <p className="text-sm text-muted-foreground">{reviewed.length} item{reviewed.length !== 1 ? 's' : ''} reviewed.</p>
         </div>
       ) : (
-        SUITE_ORDER.map(suite =>
-          pendingBySuite[suite] ? (
+        Object.keys(pendingBySuite).map(suite => (
             <SuiteGroup key={suite} suite={suite} items={pendingBySuite[suite]} onCardClick={handleCardClick} />
-          ) : null
-        )
+        ))
       )}
 
       {reviewed.length > 0 && (

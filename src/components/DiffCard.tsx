@@ -76,9 +76,6 @@ export function DiffCard({ diff, onClick }: DiffCardProps) {
       <div className="p-2">
         <div className="text-xs font-medium truncate">{diff.description}</div>
         <div className="flex items-center gap-1 flex-wrap mt-1">
-          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-blue-950 text-blue-300 hover:bg-blue-900">
-            {diff.retailer}
-          </Badge>
           {diff.viewport === 'phone' && (
             <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-purple-950 text-purple-300">
               mobile

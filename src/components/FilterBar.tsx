@@ -9,41 +9,31 @@ import {
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
-import { SUITE_LABELS, RETAILERS } from '@/lib/types';
 
 export function FilterBar() {
-  const { filters, setFilter, clearFilters, getStats, diffs } = useReviewStore();
+  const { filters, setFilter, clearFilters, getStats, diffs, availableSuites } = useReviewStore();
   const stats = getStats();
 
   if (diffs.length === 0) return null;
 
   return (
     <div className="border-b border-border bg-background px-4 py-2 flex items-center gap-2 flex-wrap">
-      <span className="text-xs text-muted-foreground">Suite</span>
-      <Select value={filters.suite} onValueChange={(v) => setFilter('suite', v ?? '')}>
-        <SelectTrigger className="h-7 w-[130px] text-xs">
-          <SelectValue placeholder="All" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="">All</SelectItem>
-          {Object.entries(SUITE_LABELS).filter(([k]) => k !== 'unknown').map(([key, label]) => (
-            <SelectItem key={key} value={key}>{label}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-      <span className="text-xs text-muted-foreground">Retailer</span>
-      <Select value={filters.retailer} onValueChange={(v) => setFilter('retailer', v ?? '')}>
-        <SelectTrigger className="h-7 w-[110px] text-xs">
-          <SelectValue placeholder="All" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="">All</SelectItem>
-          {RETAILERS.map(r => (
-            <SelectItem key={r} value={r}>{r}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      {availableSuites.length > 1 && (
+        <>
+          <span className="text-xs text-muted-foreground">Suite</span>
+          <Select value={filters.suite} onValueChange={(v) => setFilter('suite', v ?? '')}>
+            <SelectTrigger className="h-7 w-[130px] text-xs">
+              <SelectValue placeholder="All" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All</SelectItem>
+              {availableSuites.map(s => (
+                <SelectItem key={s} value={s}>{s}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </>
+      )}
 
       <span className="text-xs text-muted-foreground">Viewport</span>
       <Select value={filters.viewport} onValueChange={(v) => setFilter('viewport', v ?? '')}>

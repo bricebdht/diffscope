@@ -7,13 +7,13 @@ Import a Playwright HTML report directly in your browser, review screenshot diff
 ## Features
 
 - **Import** a Playwright HTML report via drag & drop or file picker (parses the embedded ZIP client-side)
-- **Thumbnail grid** of all screenshot diffs, grouped by test suite, with pixel count, viewport and retailer metadata
+- **Thumbnail grid** of all screenshot diffs, grouped by test suite, with pixel count and viewport metadata
 - **Comparison view** with two modes:
   - **3-Panel** — Expected | Actual | Diff side by side with synchronized scroll
   - **Slider** — overlay with a draggable divider
 - **Review actions** — Approve (`A`), Needs Changes (`X`), Skip — auto-advances to the next diff
 - **Keyboard navigation** — `←` / `→` between diffs, `Esc` to close
-- **Filters** — by suite, retailer, viewport, status (Pending / Approved / Needs Changes), diffs-only toggle, text search
+- **Filters** — by suite, viewport, status (Pending / Approved / Needs Changes), diffs-only toggle, text search
 - **Reviewed section** — reviewed items collapse into a separate section at the bottom
 - **Persistent state** — review decisions saved in localStorage across sessions
 
@@ -37,7 +37,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173, then import your `playwright-report` folder (or its `index.html`).
+Open http://localhost:5173, then import your `playwright-report` folder or `.zip` archive.
 
 ## Build for production
 
