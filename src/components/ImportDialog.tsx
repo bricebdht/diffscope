@@ -1,7 +1,8 @@
 import { useState, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { useReviewStore } from '@/store/review-store';
-import { parsePlaywrightReport } from '@/lib/report-parser';
+import { parsePlaywrightFolder, parsePlaywrightHtml, parsePlaywrightZip, computePixelCount } from '@/lib/report-parser';
+import type { DiffEntry } from '@/lib/types';
 import { Upload, FolderOpen, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -19,50 +20,75 @@ export function ImportDialog({ open, onClose }: ImportDialogProps) {
   const folderInputRef = useRef<HTMLInputElement>(null);
   const { setDiffs, clearReport } = useReviewStore();
 
+  const finalize = useCallback(async (diffs: DiffEntry[]) => {
+    setProgress(`Found ${diffs.length} diffs. Computing pixel counts...`);
+    // Compute pixel counts in the background
+    const withCounts = await Promise.all(
+      diffs.map(async d => {
+        const pixelCount = await computePixelCount(d);
+        return { ...d, pixelCount };
+      })
+    );
+    setDiffs(withCounts);
+    onClose();
+  }, [setDiffs, onClose]);
+
   const processFiles = useCallback(async (files: File[]) => {
     setLoading(true);
     setError(null);
-    setProgress('Looking for index.html...');
 
     try {
-      // Find index.html
-      const indexFile = files.find(f => {
-        const rp = f.webkitRelativePath || f.name;
-        return rp === 'index.html' || rp.endsWith('/index.html');
-      });
-
-      if (!indexFile) {
-        throw new Error('index.html not found. Please drop the playwright-report folder or select the index.html file.');
+      // Check if a single .zip file was dropped/selected
+      if (files.length === 1 && files[0].name.endsWith('.zip')) {
+        setProgress('Extracting ZIP archive...');
+        clearReport();
+        const diffs = await parsePlaywrightZip(files[0]);
+        await finalize(diffs);
+        return;
       }
 
-      setProgress('Parsing report...');
+      // Check if a single .html file was selected
+      if (files.length === 1 && files[0].name.endsWith('.html')) {
+        setProgress('Parsing HTML report...');
+        clearReport();
+        const diffs = await parsePlaywrightHtml(files[0]);
+        await finalize(diffs);
+        return;
+      }
+
+      // Folder import: look for index.html + data/ files
+      setProgress('Reading folder...');
       clearReport();
-      const diffs = await parsePlaywrightReport(indexFile);
-      setProgress(`Found ${diffs.length} diffs`);
-      setDiffs(diffs);
-      onClose();
+      const diffs = await parsePlaywrightFolder(files);
+      await finalize(diffs);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Import failed');
     } finally {
       setLoading(false);
       setProgress('');
     }
-  }, [setDiffs, clearReport, onClose]);
+  }, [clearReport, finalize]);
 
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
 
+    // Check for regular files first (zip or html drop)
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    if (droppedFiles.length === 1 && (droppedFiles[0].name.endsWith('.zip') || droppedFiles[0].name.endsWith('.html'))) {
+      await processFiles(droppedFiles);
+      return;
+    }
+
     const items = e.dataTransfer.items;
     if (!items) return;
 
-    // Collect all files via webkitGetAsEntry traversal
+    // Collect all files via webkitGetAsEntry traversal (for folder drops)
     const entries = Array.from(items)
       .map(i => i.webkitGetAsEntry?.())
       .filter((e): e is FileSystemEntry => e != null);
 
     if (entries.length === 0) {
-      // Fallback to regular files
       const files = Array.from(e.dataTransfer.files);
       await processFiles(files);
       return;
@@ -82,10 +108,14 @@ export function ImportDialog({ open, onClose }: ImportDialogProps) {
       } else if (entry.isDirectory) {
         const dirEntry = entry as FileSystemDirectoryEntry;
         const reader = dirEntry.createReader();
-        await new Promise<void>(resolve => reader.readEntries(async entries => {
-          for (const e of entries) await traverse(e, _prefix + entry.name + '/');
-          resolve();
-        }));
+        // readEntries may not return all entries at once — loop until empty
+        let batch: FileSystemEntry[] = [];
+        do {
+          batch = await new Promise<FileSystemEntry[]>(resolve =>
+            reader.readEntries(resolve)
+          );
+          for (const e of batch) await traverse(e, _prefix + entry.name + '/');
+        } while (batch.length > 0);
       }
     }
 
@@ -125,8 +155,9 @@ export function ImportDialog({ open, onClose }: ImportDialogProps) {
         </div>
 
         <p className="text-sm text-muted-foreground leading-relaxed">
-          Drop your <code className="bg-muted px-1 py-0.5 rounded text-xs">playwright-report</code> folder below,
-          or select the <code className="bg-muted px-1 py-0.5 rounded text-xs">index.html</code> file directly.
+          Drop your <code className="bg-muted px-1 py-0.5 rounded text-xs">playwright-report</code> folder
+          or <code className="bg-muted px-1 py-0.5 rounded text-xs">.zip</code> archive below,
+          or browse for a file.
         </p>
 
         {/* Drop zone */}
@@ -144,7 +175,7 @@ export function ImportDialog({ open, onClose }: ImportDialogProps) {
             onClick={() => folderInputRef.current?.click()}
           >
             <Upload className="h-8 w-8 mx-auto mb-3 opacity-50" />
-            <div className="font-medium text-sm mb-1">Drop folder here</div>
+            <div className="font-medium text-sm mb-1">Drop folder or ZIP here</div>
             <div className="text-xs">
               or{' '}
               <button
@@ -154,7 +185,7 @@ export function ImportDialog({ open, onClose }: ImportDialogProps) {
                   fileInputRef.current?.click();
                 }}
               >
-                browse for index.html
+                browse for .html or .zip
               </button>
             </div>
           </div>
@@ -197,7 +228,7 @@ export function ImportDialog({ open, onClose }: ImportDialogProps) {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".html"
+          accept=".html,.zip"
           className="hidden"
           onChange={handleFileSelect}
         />

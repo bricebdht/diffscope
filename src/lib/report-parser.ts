@@ -60,22 +60,15 @@ function createBlobUrl(data: Uint8Array, contentType: string): string {
   return URL.createObjectURL(blob);
 }
 
-/**
- * Parse a Playwright HTML report file.
- * The report embeds a ZIP containing report.json and image attachments.
- */
-export async function parsePlaywrightReport(htmlFile: File | Uint8Array): Promise<DiffEntry[]> {
-  let htmlText: string;
+function createBlobUrlFromFile(file: File): string {
+  return URL.createObjectURL(file);
+}
 
-  if (htmlFile instanceof File) {
-    htmlText = await htmlFile.text();
-  } else {
-    htmlText = new TextDecoder().decode(htmlFile);
-  }
-
-  // Extract base64 ZIP from the HTML
+function extractZipFromHtml(htmlText: string): Uint8Array {
+  // Match <script id="playwrightReportBase64" type="application/zip">data:application/zip;base64,...</script>
+  // or <script ... playwrightReportBase64 ...>(data:application/zip;base64,...)</script>
   const match = htmlText.match(
-    /<script[^>]*playwrightReportBase64[^>]*>(?:data:application\/zip;base64,)?([A-Za-z0-9+/=\s]+)<\/script>/
+    /<script[^>]*playwrightReportBase64[^>]*>(?:data:application\/zip;base64,)([A-Za-z0-9+/=\s]+)<\/script>/
   );
   if (!match) {
     throw new Error('Could not find Playwright report data in HTML file');
@@ -87,14 +80,20 @@ export async function parsePlaywrightReport(htmlFile: File | Uint8Array): Promis
   for (let i = 0; i < binaryStr.length; i++) {
     zipBytes[i] = binaryStr.charCodeAt(i);
   }
+  return zipBytes;
+}
 
-  // Extract report.json from ZIP
+function extractReport(zipBytes: Uint8Array): PlaywrightReport {
   const reportJson = zipExtract(zipBytes, 'report.json');
-  const report: PlaywrightReport = JSON.parse(new TextDecoder().decode(reportJson));
+  return JSON.parse(new TextDecoder().decode(reportJson));
+}
 
-  // List all files in the ZIP for image extraction
-  const zipEntries = zipList(zipBytes);
+type ImageResolver = (attPath: string) => Promise<string | null>;
 
+async function buildDiffs(
+  report: PlaywrightReport,
+  resolveImage: ImageResolver,
+): Promise<DiffEntry[]> {
   const diffs: DiffEntry[] = [];
 
   for (const file of (report.files || [])) {
@@ -118,69 +117,11 @@ export async function parsePlaywrightReport(htmlFile: File | Uint8Array): Promis
         const viewport = test.projectName === 'phone' ? 'phone' : 'desktop';
         const id = hashCode(`pw-report/${baseName}/${viewport}`);
 
-        // Extract images from ZIP
-        let diffBlob: string | null = null;
-        let actualBlob: string | null = null;
-        let expectedBlob: string | null = null;
-
-        const extractImage = (att: PlaywrightAttachment | undefined): string | null => {
-          if (!att) return null;
-
-          // Try body (base64 inline)
-          if (att.body) {
-            try {
-              const binaryStr = atob(att.body);
-              const bytes = new Uint8Array(binaryStr.length);
-              for (let i = 0; i < binaryStr.length; i++) {
-                bytes[i] = binaryStr.charCodeAt(i);
-              }
-              return createBlobUrl(bytes, 'image/png');
-            } catch {
-              // fall through
-            }
-          }
-
-          // Try path (reference to file in ZIP's data/ directory)
-          if (att.path) {
-            const zipPath = att.path;
-            if (zipEntries.includes(zipPath)) {
-              try {
-                const data = zipExtract(zipBytes, zipPath);
-                return createBlobUrl(data, 'image/png');
-              } catch {
-                // fall through
-              }
-            }
-          }
-
-          return null;
-        };
-
-        diffBlob = extractImage(diffAtt);
-        actualBlob = extractImage(actualAtt);
-        expectedBlob = extractImage(expAtt);
-
-        // Count diff pixels from diff image
-        let pixelCount: number | null = null;
-        if (diffAtt.path && zipEntries.includes(diffAtt.path)) {
-          try {
-            const diffData = zipExtract(zipBytes, diffAtt.path);
-            pixelCount = countDiffPixels(diffData);
-          } catch {
-            // ignore
-          }
-        } else if (diffAtt.body) {
-          try {
-            const binaryStr = atob(diffAtt.body);
-            const bytes = new Uint8Array(binaryStr.length);
-            for (let i = 0; i < binaryStr.length; i++) {
-              bytes[i] = binaryStr.charCodeAt(i);
-            }
-            pixelCount = countDiffPixels(bytes);
-          } catch {
-            // ignore
-          }
-        }
+        const [diffBlob, actualBlob, expectedBlob] = await Promise.all([
+          diffAtt.path ? resolveImage(diffAtt.path) : null,
+          actualAtt?.path ? resolveImage(actualAtt.path) : null,
+          expAtt?.path ? resolveImage(expAtt.path) : null,
+        ]);
 
         diffs.push({
           id,
@@ -191,7 +132,7 @@ export async function parsePlaywrightReport(htmlFile: File | Uint8Array): Promis
           description: fileMeta.description,
           index: fileMeta.index,
           hasDiff: true,
-          pixelCount,
+          pixelCount: null, // computed lazily below for perf
           diffBlob,
           actualBlob,
           expectedBlob,
@@ -218,8 +159,8 @@ export async function parsePlaywrightReport(htmlFile: File | Uint8Array): Promis
 }
 
 /**
- * Parse a Playwright report from a dropped folder.
- * Looks for index.html in the folder's files.
+ * Parse a Playwright report from a folder of files (drag & drop or file picker).
+ * Reads index.html for report.json, resolves images from companion data/ files.
  */
 export async function parsePlaywrightFolder(files: File[]): Promise<DiffEntry[]> {
   const indexFile = files.find(f => {
@@ -231,5 +172,132 @@ export async function parsePlaywrightFolder(files: File[]): Promise<DiffEntry[]>
     throw new Error('index.html not found. Please drop the playwright-report folder.');
   }
 
-  return parsePlaywrightReport(indexFile);
+  const htmlText = await indexFile.text();
+  const zipBytes = extractZipFromHtml(htmlText);
+  const report = extractReport(zipBytes);
+  const zipEntries = zipList(zipBytes);
+
+  // Build a lookup map for companion data/ files by their relative path
+  const dataFiles = new Map<string, File>();
+  for (const f of files) {
+    const rp = f.webkitRelativePath || f.name;
+    // Normalize: strip leading folder name (e.g. "playwright-report/data/xxx.png" → "data/xxx.png")
+    const dataIdx = rp.indexOf('data/');
+    if (dataIdx !== -1) {
+      const relPath = rp.slice(dataIdx);
+      dataFiles.set(relPath, f);
+    }
+  }
+
+  const resolveImage: ImageResolver = async (attPath: string) => {
+    // 1. Try companion file from the dropped folder
+    const file = dataFiles.get(attPath);
+    if (file) {
+      return createBlobUrlFromFile(file);
+    }
+
+    // 2. Try inside the embedded ZIP
+    if (zipEntries.includes(attPath)) {
+      try {
+        const data = zipExtract(zipBytes, attPath);
+        return createBlobUrl(data, 'image/png');
+      } catch {
+        // fall through
+      }
+    }
+
+    return null;
+  };
+
+  return buildDiffs(report, resolveImage);
+}
+
+/**
+ * Parse a Playwright report from a single HTML file.
+ * Images must be embedded in the ZIP or as base64 in the report.
+ */
+export async function parsePlaywrightHtml(htmlFile: File): Promise<DiffEntry[]> {
+  const htmlText = await htmlFile.text();
+  const zipBytes = extractZipFromHtml(htmlText);
+  const report = extractReport(zipBytes);
+  const zipEntries = zipList(zipBytes);
+
+  const resolveImage: ImageResolver = async (attPath: string) => {
+    if (zipEntries.includes(attPath)) {
+      try {
+        const data = zipExtract(zipBytes, attPath);
+        return createBlobUrl(data, 'image/png');
+      } catch {
+        // fall through
+      }
+    }
+    return null;
+  };
+
+  return buildDiffs(report, resolveImage);
+}
+
+/**
+ * Parse a Playwright report from a .zip archive.
+ * The zip should contain index.html and data/ files at the root or inside a folder.
+ */
+export async function parsePlaywrightZip(zipFile: File): Promise<DiffEntry[]> {
+  const arrayBuf = await zipFile.arrayBuffer();
+  const outerZip = new Uint8Array(arrayBuf);
+  const outerEntries = zipList(outerZip);
+
+  // Find index.html (may be at root or inside a subfolder)
+  const indexEntry = outerEntries.find(e => e === 'index.html' || e.endsWith('/index.html'));
+  if (!indexEntry) {
+    throw new Error('index.html not found in ZIP archive.');
+  }
+
+  const prefix = indexEntry.replace('index.html', '');
+  const htmlBytes = zipExtract(outerZip, indexEntry);
+  const htmlText = new TextDecoder().decode(htmlBytes);
+  const innerZip = extractZipFromHtml(htmlText);
+  const report = extractReport(innerZip);
+  const innerEntries = zipList(innerZip);
+
+  const resolveImage: ImageResolver = async (attPath: string) => {
+    // 1. Try from the outer zip (data/ files alongside index.html)
+    const outerPath = prefix + attPath;
+    if (outerEntries.includes(outerPath)) {
+      try {
+        const data = zipExtract(outerZip, outerPath);
+        return createBlobUrl(data, 'image/png');
+      } catch {
+        // fall through
+      }
+    }
+
+    // 2. Try from the inner (embedded) zip
+    if (innerEntries.includes(attPath)) {
+      try {
+        const data = zipExtract(innerZip, attPath);
+        return createBlobUrl(data, 'image/png');
+      } catch {
+        // fall through
+      }
+    }
+
+    return null;
+  };
+
+  return buildDiffs(report, resolveImage);
+}
+
+/**
+ * Count diff pixels for a single entry.
+ * Fetches the diff blob URL and decodes the PNG.
+ */
+export async function computePixelCount(diff: DiffEntry): Promise<number | null> {
+  if (!diff.diffBlob) return null;
+  try {
+    const resp = await fetch(diff.diffBlob);
+    const buf = await resp.arrayBuffer();
+    return countDiffPixels(new Uint8Array(buf));
+  } catch {
+    return null;
+  }
 }
