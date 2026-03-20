@@ -20,12 +20,12 @@ export function FilterBar() {
   return (
     <div className="border-b border-border bg-background px-4 py-2 flex items-center gap-2 flex-wrap">
       <span className="text-xs text-muted-foreground">Suite</span>
-      <Select value={filters.suite || '__all__'} onValueChange={(v) => setFilter('suite', v === '__all__' ? '' : v ?? '')}>
+      <Select value={filters.suite} onValueChange={(v) => setFilter('suite', v ?? '')}>
         <SelectTrigger className="h-7 w-[130px] text-xs">
-          <SelectValue />
+          <SelectValue placeholder="All" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="__all__">All</SelectItem>
+          <SelectItem value="">All</SelectItem>
           {Object.entries(SUITE_LABELS).filter(([k]) => k !== 'unknown').map(([key, label]) => (
             <SelectItem key={key} value={key}>{label}</SelectItem>
           ))}
@@ -33,12 +33,12 @@ export function FilterBar() {
       </Select>
 
       <span className="text-xs text-muted-foreground">Retailer</span>
-      <Select value={filters.retailer || '__all__'} onValueChange={(v) => setFilter('retailer', v === '__all__' ? '' : v ?? '')}>
+      <Select value={filters.retailer} onValueChange={(v) => setFilter('retailer', v ?? '')}>
         <SelectTrigger className="h-7 w-[110px] text-xs">
-          <SelectValue />
+          <SelectValue placeholder="All" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="__all__">All</SelectItem>
+          <SelectItem value="">All</SelectItem>
           {RETAILERS.map(r => (
             <SelectItem key={r} value={r}>{r}</SelectItem>
           ))}
@@ -46,24 +46,24 @@ export function FilterBar() {
       </Select>
 
       <span className="text-xs text-muted-foreground">Viewport</span>
-      <Select value={filters.viewport || '__all__'} onValueChange={(v) => setFilter('viewport', v === '__all__' ? '' : v ?? '')}>
+      <Select value={filters.viewport} onValueChange={(v) => setFilter('viewport', v ?? '')}>
         <SelectTrigger className="h-7 w-[100px] text-xs">
-          <SelectValue />
+          <SelectValue placeholder="All" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="__all__">All</SelectItem>
+          <SelectItem value="">All</SelectItem>
           <SelectItem value="desktop">Desktop</SelectItem>
           <SelectItem value="phone">Mobile</SelectItem>
         </SelectContent>
       </Select>
 
       <span className="text-xs text-muted-foreground">Status</span>
-      <Select value={filters.status || '__all__'} onValueChange={(v) => setFilter('status', v === '__all__' ? '' : v ?? '')}>
+      <Select value={filters.status} onValueChange={(v) => setFilter('status', v ?? '')}>
         <SelectTrigger className="h-7 w-[120px] text-xs">
-          <SelectValue />
+          <SelectValue placeholder="All" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="__all__">All</SelectItem>
+          <SelectItem value="">All</SelectItem>
           <SelectItem value="pending">Pending</SelectItem>
           <SelectItem value="approved">Approved</SelectItem>
           <SelectItem value="changes">Needs Changes</SelectItem>

@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { useReviewStore } from '@/store/review-store';
-import { parsePlaywrightFolder, parsePlaywrightHtml, parsePlaywrightZip, computePixelCount } from '@/lib/report-parser';
+import { parsePlaywrightFolder, parsePlaywrightZip, computePixelCount } from '@/lib/report-parser';
 import type { DiffEntry } from '@/lib/types';
 import { Upload, FolderOpen, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -47,15 +47,6 @@ export function ImportDialog({ open, onClose }: ImportDialogProps) {
         return;
       }
 
-      // Check if a single .html file was selected
-      if (files.length === 1 && files[0].name.endsWith('.html')) {
-        setProgress('Parsing HTML report...');
-        clearReport();
-        const diffs = await parsePlaywrightHtml(files[0]);
-        await finalize(diffs);
-        return;
-      }
-
       // Folder import: look for index.html + data/ files
       setProgress('Reading folder...');
       clearReport();
@@ -73,9 +64,9 @@ export function ImportDialog({ open, onClose }: ImportDialogProps) {
     e.preventDefault();
     setDragOver(false);
 
-    // Check for regular files first (zip or html drop)
+    // Check for a single .zip file drop
     const droppedFiles = Array.from(e.dataTransfer.files);
-    if (droppedFiles.length === 1 && (droppedFiles[0].name.endsWith('.zip') || droppedFiles[0].name.endsWith('.html'))) {
+    if (droppedFiles.length === 1 && droppedFiles[0].name.endsWith('.zip')) {
       await processFiles(droppedFiles);
       return;
     }
@@ -156,8 +147,8 @@ export function ImportDialog({ open, onClose }: ImportDialogProps) {
 
         <p className="text-sm text-muted-foreground leading-relaxed">
           Drop your <code className="bg-muted px-1 py-0.5 rounded text-xs">playwright-report</code> folder
-          or <code className="bg-muted px-1 py-0.5 rounded text-xs">.zip</code> archive below,
-          or browse for a file.
+          or <code className="bg-muted px-1 py-0.5 rounded text-xs">.zip</code> archive below.
+          For folder import, all files including <code className="bg-muted px-1 py-0.5 rounded text-xs">data/</code> are needed.
         </p>
 
         {/* Drop zone */}
@@ -176,17 +167,31 @@ export function ImportDialog({ open, onClose }: ImportDialogProps) {
           >
             <Upload className="h-8 w-8 mx-auto mb-3 opacity-50" />
             <div className="font-medium text-sm mb-1">Drop folder or ZIP here</div>
-            <div className="text-xs">
-              or{' '}
-              <button
-                className="text-primary underline cursor-pointer"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  fileInputRef.current?.click();
-                }}
-              >
-                browse for .html or .zip
-              </button>
+            <div className="text-xs flex flex-col gap-1 items-center">
+              <span>
+                or{' '}
+                <button
+                  className="text-primary underline cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    folderInputRef.current?.click();
+                  }}
+                >
+                  browse folder
+                </button>
+              </span>
+              <span>
+                or{' '}
+                <button
+                  className="text-primary underline cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    fileInputRef.current?.click();
+                  }}
+                >
+                  select .zip file
+                </button>
+              </span>
             </div>
           </div>
         )}
@@ -228,7 +233,7 @@ export function ImportDialog({ open, onClose }: ImportDialogProps) {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".html,.zip"
+          accept=".zip"
           className="hidden"
           onChange={handleFileSelect}
         />
