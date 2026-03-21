@@ -12,6 +12,7 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
 const reportDir = resolve("playwright-report");
+const zipPath = resolve("playwright-report.zip");
 
 if (!existsSync(reportDir)) {
   console.error("playwright-report/ directory not found – nothing to zip.");
@@ -20,11 +21,12 @@ if (!existsSync(reportDir)) {
 
 if (process.platform === "win32") {
   execSync(
-    `powershell -NoProfile -Command "Compress-Archive -Path 'playwright-report\\*' -DestinationPath 'playwright-report.zip' -Force"`,
+    `powershell -NoProfile -Command "Compress-Archive -Path '${reportDir}\\*' -DestinationPath '${zipPath}' -Force"`,
     { stdio: "inherit" },
   );
 } else {
-  execSync("cd playwright-report && zip -r ../playwright-report.zip .", {
+  execSync(`zip -r "${zipPath}" .`, {
+    cwd: reportDir,
     stdio: "inherit",
   });
 }

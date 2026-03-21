@@ -171,8 +171,9 @@ export function ImportDialog({ open, onClose }: ImportDialogProps) {
 
         {/* Drop zone */}
         {!loading && (
-          <button
-            type="button"
+          <div
+            role="button"
+            tabIndex={0}
             className={cn(
               'w-full border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all bg-transparent',
               dragOver
@@ -183,54 +184,44 @@ export function ImportDialog({ open, onClose }: ImportDialogProps) {
             onDragLeave={() => setDragOver(false)}
             onDrop={handleDrop}
             onClick={() => folderInputRef.current?.click()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                folderInputRef.current?.click();
+              }
+            }}
           >
             <Upload className="h-8 w-8 mx-auto mb-3 opacity-50" />
             <div className="font-medium text-sm mb-1">Drop folder or ZIP here</div>
             <div className="text-xs flex flex-col gap-1 items-center">
               <span>
                 or{' '}
-                <span
-                  role="button"
-                  tabIndex={0}
-                  className="text-primary underline cursor-pointer"
+                <button
+                  type="button"
+                  className="text-primary underline cursor-pointer bg-transparent border-none p-0 text-xs font-inherit"
                   onClick={(e) => {
                     e.stopPropagation();
                     folderInputRef.current?.click();
                   }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      folderInputRef.current?.click();
-                    }
-                  }}
                 >
                   browse folder
-                </span>
+                </button>
               </span>
               <span>
                 or{' '}
-                <span
-                  role="button"
-                  tabIndex={0}
-                  className="text-primary underline cursor-pointer"
+                <button
+                  type="button"
+                  className="text-primary underline cursor-pointer bg-transparent border-none p-0 text-xs font-inherit"
                   onClick={(e) => {
                     e.stopPropagation();
                     fileInputRef.current?.click();
                   }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      fileInputRef.current?.click();
-                    }
-                  }}
                 >
                   select .zip file
-                </span>
+                </button>
               </span>
             </div>
-          </button>
+          </div>
         )}
 
         {/* Loading state */}
