@@ -1,0 +1,15 @@
+{
+  "name": "diffscope-test-fixture",
+  "private": true,
+  "scripts": {
+    "test": "npx playwright test",
+    "report": "npm run test:baseline && npm run test:diffs && npm run zip-report",
+    "test:baseline": "npx playwright test --update-snapshots",
+    "test:diffs": "node scripts/test-diffs.mjs",
+    "zip-report": "node scripts/zip-report.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "serve": "^14.2.6"
+  }
+}
