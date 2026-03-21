@@ -48,6 +48,19 @@ npm run preview   # preview the production build locally
 
 The output is in `dist/` — deploy it to any static hosting (Vercel, Netlify, GitHub Pages, etc.).
 
+## Generating a test report
+
+A small fixture project in `test-fixture/` can generate a Playwright report with visual diffs — useful for testing Diffscope itself.
+
+```bash
+cd test-fixture
+npm install
+npx playwright install chromium
+npm run report
+```
+
+This creates a `playwright-report/` folder you can import directly into Diffscope. The script takes baseline screenshots of a sample dashboard, then re-runs with injected CSS changes to produce intentional visual diffs.
+
 ## How it works
 
 Playwright generates an HTML report (`index.html`) that embeds a ZIP archive containing `report.json` and all screenshot attachments. Diffscope parses this entirely in the browser:

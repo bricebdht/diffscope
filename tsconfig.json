@@ -4,7 +4,7 @@
     { "path": "./tsconfig.app.json" },
     { "path": "./tsconfig.node.json" }
   ],
-  "exclude": ["examples", "dist", "node_modules"],
+  "exclude": ["test-fixture", "dist", "node_modules"],
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {

@@ -1,0 +1,14 @@
+{
+  "name": "diffscope-test-fixture",
+  "private": true,
+  "scripts": {
+    "test": "npx playwright test",
+    "report": "npm run test:baseline && npm run test:diffs",
+    "test:baseline": "npx playwright test --update-snapshots",
+    "test:diffs": "GENERATE_DIFFS=true npx playwright test --reporter=html || true"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "serve": "^14.2.6"
+  }
+}

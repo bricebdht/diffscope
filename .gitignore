@@ -1,5 +1,11 @@
-# Test reports
-examples/
+# macOS
+.DS_Store
+
+# Test fixture outputs
+test-fixture/playwright-report/
+test-fixture/test-results/
+test-fixture/e2e/**/*-snapshots/
+test-fixture/node_modules/
 
 # Logs
 logs
