@@ -3,6 +3,7 @@
 
 # Test fixture outputs
 test-fixture/playwright-report/
+test-fixture/playwright-report.zip
 test-fixture/test-results/
 test-fixture/e2e/**/*-snapshots/
 test-fixture/node_modules/
