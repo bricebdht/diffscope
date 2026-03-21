@@ -20,7 +20,7 @@ export default defineConfig({
     },
     {
       name: 'phone',
-      use: { ...devices['iPhone 14'] },
+      use: { ...devices['Pixel 7'] },
     },
   ],
   webServer: {

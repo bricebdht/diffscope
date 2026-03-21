@@ -197,6 +197,13 @@ export function ImportDialog({ open, onClose }: ImportDialogProps) {
                     e.stopPropagation();
                     folderInputRef.current?.click();
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      folderInputRef.current?.click();
+                    }
+                  }}
                 >
                   browse folder
                 </span>
@@ -210,6 +217,13 @@ export function ImportDialog({ open, onClose }: ImportDialogProps) {
                   onClick={(e) => {
                     e.stopPropagation();
                     fileInputRef.current?.click();
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      fileInputRef.current?.click();
+                    }
                   }}
                 >
                   select .zip file
