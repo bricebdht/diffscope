@@ -189,7 +189,9 @@ export function ImportDialog({ open, onClose }: ImportDialogProps) {
             <div className="text-xs flex flex-col gap-1 items-center">
               <span>
                 or{' '}
-                <button
+                <span
+                  role="button"
+                  tabIndex={0}
                   className="text-primary underline cursor-pointer"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -197,11 +199,13 @@ export function ImportDialog({ open, onClose }: ImportDialogProps) {
                   }}
                 >
                   browse folder
-                </button>
+                </span>
               </span>
               <span>
                 or{' '}
-                <button
+                <span
+                  role="button"
+                  tabIndex={0}
                   className="text-primary underline cursor-pointer"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -209,7 +213,7 @@ export function ImportDialog({ open, onClose }: ImportDialogProps) {
                   }}
                 >
                   select .zip file
-                </button>
+                </span>
               </span>
             </div>
           </button>
