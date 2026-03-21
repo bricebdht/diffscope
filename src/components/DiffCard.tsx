@@ -14,10 +14,11 @@ export function DiffCard({ diff, onClick }: DiffCardProps) {
   const status = getStatus(diff.id);
 
   return (
-    <div
+    <button
+      type="button"
       onClick={onClick}
       className={cn(
-        'group relative rounded-lg border-2 overflow-hidden cursor-pointer transition-all hover:-translate-y-0.5',
+        'group relative rounded-lg border-2 overflow-hidden cursor-pointer transition-all hover:-translate-y-0.5 text-left w-full',
         'bg-card',
         status === 'approved' && 'border-green-800 hover:border-green-500',
         status === 'changes' && 'border-red-900 hover:border-red-500',
@@ -88,6 +89,6 @@ export function DiffCard({ diff, onClick }: DiffCardProps) {
           )}
         </div>
       </div>
-    </div>
+    </button>
   );
 }

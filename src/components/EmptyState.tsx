@@ -12,7 +12,7 @@ export function EmptyState({ onImport }: { onImport: () => void }) {
         <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
           Import a Playwright HTML report to start reviewing visual diffs.
           Drop a <code className="bg-muted px-1 py-0.5 rounded text-xs">playwright-report</code> folder
-          or select the <code className="bg-muted px-1 py-0.5 rounded text-xs">index.html</code> file.
+          or a <code className="bg-muted px-1 py-0.5 rounded text-xs">.zip</code> archive.
         </p>
         <Button onClick={onImport} className="gap-2">
           <Upload className="h-4 w-4" />

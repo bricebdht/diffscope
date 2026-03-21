@@ -6,7 +6,7 @@ Import a Playwright HTML report directly in your browser, review screenshot diff
 
 ## Features
 
-- **Import** a Playwright HTML report via drag & drop or file picker (parses the embedded ZIP client-side)
+- **Import** a Playwright report folder or `.zip` archive via drag & drop or file picker (parses the embedded ZIP client-side)
 - **Thumbnail grid** of all screenshot diffs, grouped by test suite, with pixel count and viewport metadata
 - **Comparison view** with two modes:
   - **3-Panel** — Expected | Actual | Diff side by side with synchronized scroll
@@ -50,9 +50,9 @@ The output is in `dist/` — deploy it to any static hosting (Vercel, Netlify, G
 
 ## How it works
 
-Playwright generates an HTML report that embeds a ZIP archive containing `report.json` and all screenshot attachments. Diffscope parses this entirely in the browser:
+Playwright generates an HTML report (`index.html`) that embeds a ZIP archive containing `report.json` and all screenshot attachments. Diffscope parses this entirely in the browser:
 
-1. Reads the HTML file and extracts the base64-encoded ZIP
+1. Reads `index.html` from the imported folder or `.zip` and extracts the base64-encoded ZIP
 2. Decompresses the ZIP (using pako) and parses `report.json`
 3. Extracts diff, actual and expected PNG images as blob URLs
 4. Counts changed pixels by decoding raw PNG data (pure JS, no canvas)

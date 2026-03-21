@@ -21,14 +21,28 @@ export function ImportDialog({ open, onClose }: ImportDialogProps) {
   const { setDiffs, clearReport } = useReviewStore();
 
   const finalize = useCallback(async (diffs: DiffEntry[]) => {
-    setProgress(`Found ${diffs.length} diffs. Computing pixel counts...`);
-    // Compute pixel counts in the background
-    const withCounts = await Promise.all(
-      diffs.map(async d => {
-        const pixelCount = await computePixelCount(d);
-        return { ...d, pixelCount };
-      })
-    );
+    const CONCURRENCY = 4;
+    let done = 0;
+    const withCounts: DiffEntry[] = [...diffs];
+
+    setProgress(`Computing pixel counts… 0/${diffs.length}`);
+
+    // Process diffs with limited concurrency to avoid freezing the UI
+    const queue = diffs.map((d, i) => async () => {
+      const pixelCount = await computePixelCount(d);
+      withCounts[i] = { ...d, pixelCount };
+      done++;
+      setProgress(`Computing pixel counts… ${done}/${diffs.length}`);
+    });
+
+    const executing = new Set<Promise<void>>();
+    for (const task of queue) {
+      const p = task().then(() => { executing.delete(p); });
+      executing.add(p);
+      if (executing.size >= CONCURRENCY) await Promise.race(executing);
+    }
+    await Promise.all(executing);
+
     setDiffs(withCounts);
     onClose();
   }, [setDiffs, onClose]);
@@ -157,9 +171,10 @@ export function ImportDialog({ open, onClose }: ImportDialogProps) {
 
         {/* Drop zone */}
         {!loading && (
-          <div
+          <button
+            type="button"
             className={cn(
-              'border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all',
+              'w-full border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all bg-transparent',
               dragOver
                 ? 'border-primary bg-primary/5 text-foreground'
                 : 'border-border text-muted-foreground hover:border-muted-foreground'
@@ -197,7 +212,7 @@ export function ImportDialog({ open, onClose }: ImportDialogProps) {
                 </button>
               </span>
             </div>
-          </div>
+          </button>
         )}
 
         {/* Loading state */}

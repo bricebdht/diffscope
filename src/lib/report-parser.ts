@@ -152,7 +152,7 @@ export async function parsePlaywrightFolder(files: File[]): Promise<DiffEntry[]>
   const htmlText = await indexFile.text();
   const zipBytes = extractZipFromHtml(htmlText);
   const report = extractReport(zipBytes);
-  const zipEntries = zipList(zipBytes);
+  const zipEntrySet = new Set(zipList(zipBytes));
 
   // Build a lookup map for companion data/ files by their relative path
   const dataFiles = new Map<string, File>();
@@ -174,7 +174,7 @@ export async function parsePlaywrightFolder(files: File[]): Promise<DiffEntry[]>
     }
 
     // 2. Try inside the embedded ZIP
-    if (zipEntries.includes(attPath)) {
+    if (zipEntrySet.has(attPath)) {
       try {
         const data = zipExtract(zipBytes, attPath);
         return createBlobUrl(data, 'image/png');
@@ -197,10 +197,10 @@ export async function parsePlaywrightHtml(htmlFile: File): Promise<DiffEntry[]> 
   const htmlText = await htmlFile.text();
   const zipBytes = extractZipFromHtml(htmlText);
   const report = extractReport(zipBytes);
-  const zipEntries = zipList(zipBytes);
+  const zipEntrySet = new Set(zipList(zipBytes));
 
   const resolveImage: ImageResolver = async (attPath: string) => {
-    if (zipEntries.includes(attPath)) {
+    if (zipEntrySet.has(attPath)) {
       try {
         const data = zipExtract(zipBytes, attPath);
         return createBlobUrl(data, 'image/png');
@@ -221,10 +221,11 @@ export async function parsePlaywrightHtml(htmlFile: File): Promise<DiffEntry[]> 
 export async function parsePlaywrightZip(zipFile: File): Promise<DiffEntry[]> {
   const arrayBuf = await zipFile.arrayBuffer();
   const outerZip = new Uint8Array(arrayBuf);
-  const outerEntries = zipList(outerZip);
+  const outerEntryList = zipList(outerZip);
+  const outerEntrySet = new Set(outerEntryList);
 
   // Find index.html (may be at root or inside a subfolder)
-  const indexEntry = outerEntries.find(e => e === 'index.html' || e.endsWith('/index.html'));
+  const indexEntry = outerEntryList.find(e => e === 'index.html' || e.endsWith('/index.html'));
   if (!indexEntry) {
     throw new Error('index.html not found in ZIP archive.');
   }
@@ -234,12 +235,12 @@ export async function parsePlaywrightZip(zipFile: File): Promise<DiffEntry[]> {
   const htmlText = new TextDecoder().decode(htmlBytes);
   const innerZip = extractZipFromHtml(htmlText);
   const report = extractReport(innerZip);
-  const innerEntries = zipList(innerZip);
+  const innerEntrySet = new Set(zipList(innerZip));
 
   const resolveImage: ImageResolver = async (attPath: string) => {
     // 1. Try from the outer zip (data/ files alongside index.html)
     const outerPath = prefix + attPath;
-    if (outerEntries.includes(outerPath)) {
+    if (outerEntrySet.has(outerPath)) {
       try {
         const data = zipExtract(outerZip, outerPath);
         return createBlobUrl(data, 'image/png');
@@ -249,7 +250,7 @@ export async function parsePlaywrightZip(zipFile: File): Promise<DiffEntry[]> {
     }
 
     // 2. Try from the inner (embedded) zip
-    if (innerEntries.includes(attPath)) {
+    if (innerEntrySet.has(attPath)) {
       try {
         const data = zipExtract(innerZip, attPath);
         return createBlobUrl(data, 'image/png');
