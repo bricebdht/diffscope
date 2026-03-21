@@ -41,23 +41,39 @@ export function ComparisonModal() {
 
   const handleReview = useCallback((status: 'approved' | 'changes') => {
     if (!diff) return;
-    setReview(diff.id, status, comment);
-    // Auto-advance to next pending
-    const currentIdx = modalIndex!;
-    const nextPending = filteredDiffs.findIndex(
-      (d, i) => i > currentIdx && getStatus(d.id) === 'pending'
-    );
-    if (nextPending !== -1) {
-      useReviewStore.getState().openModal(nextPending);
-    } else {
-      const firstPending = filteredDiffs.findIndex(d => getStatus(d.id) === 'pending');
-      if (firstPending !== -1 && firstPending !== currentIdx) {
-        useReviewStore.getState().openModal(firstPending);
-      } else {
-        closeModal();
+    const reviewedId = diff.id;
+    setReview(reviewedId, status, comment);
+
+    // Read fresh state after the store update — filteredDiffs may have changed
+    const store = useReviewStore.getState();
+    const freshDiffs = store.filteredDiffs;
+    const freshGetStatus = store.getStatus;
+
+    // Find where the reviewed diff sits now (it may have been removed by the active filter)
+    const currentIdx = freshDiffs.findIndex(d => d.id === reviewedId);
+
+    // Search forward from the position after the reviewed diff (or from 0 if it was removed)
+    const searchStart = currentIdx === -1 ? 0 : currentIdx + 1;
+
+    let nextIdx = -1;
+    // Forward scan
+    for (let i = searchStart; i < freshDiffs.length; i++) {
+      if (freshGetStatus(freshDiffs[i].id) === 'pending') { nextIdx = i; break; }
+    }
+    // Wrap-around scan
+    if (nextIdx === -1) {
+      const wrapEnd = currentIdx === -1 ? freshDiffs.length : currentIdx;
+      for (let i = 0; i < wrapEnd; i++) {
+        if (freshGetStatus(freshDiffs[i].id) === 'pending') { nextIdx = i; break; }
       }
     }
-  }, [diff, modalIndex, filteredDiffs, comment, setReview, getStatus, closeModal]);
+
+    if (nextIdx !== -1) {
+      store.openModal(nextIdx);
+    } else {
+      closeModal();
+    }
+  }, [diff, comment, setReview, closeModal]);
 
   const handleSkip = useCallback(() => {
     navigate(1);

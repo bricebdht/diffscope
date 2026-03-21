@@ -89,11 +89,15 @@ export function ImportDialog({ open, onClose }: ImportDialogProps) {
     setProgress('Reading files...');
     const allFiles: File[] = [];
 
-    async function traverse(entry: FileSystemEntry, _prefix: string) {
+    async function traverse(entry: FileSystemEntry, prefix: string) {
       if (entry.isFile) {
         const fileEntry = entry as FileSystemFileEntry;
         await new Promise<void>(resolve => fileEntry.file(f => {
-          allFiles.push(f);
+          const relativePath = prefix + f.name;
+          // Re-wrap with webkitRelativePath so the parser can resolve paths
+          const wrapped = new File([f], f.name, { type: f.type, lastModified: f.lastModified });
+          Object.defineProperty(wrapped, 'webkitRelativePath', { value: relativePath, writable: false });
+          allFiles.push(wrapped);
           resolve();
         }));
       } else if (entry.isDirectory) {
@@ -105,7 +109,7 @@ export function ImportDialog({ open, onClose }: ImportDialogProps) {
           batch = await new Promise<FileSystemEntry[]>(resolve =>
             reader.readEntries(resolve)
           );
-          for (const e of batch) await traverse(e, _prefix + entry.name + '/');
+          for (const e of batch) await traverse(e, prefix + entry.name + '/');
         } while (batch.length > 0);
       }
     }

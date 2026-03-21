@@ -183,6 +183,8 @@ export const useReviewStore = create<ReviewStore>((set, get) => ({
       if (d.expectedBlob) URL.revokeObjectURL(d.expectedBlob);
       if (d.thumbBlob && d.thumbBlob !== d.diffBlob) URL.revokeObjectURL(d.thumbBlob);
     }
-    set({ diffs: [], filteredDiffs: [], modalIndex: null });
+    const emptyReviewState: ReviewState = { diffs: {} };
+    saveState(emptyReviewState);
+    set({ diffs: [], filteredDiffs: [], modalIndex: null, reviewState: emptyReviewState });
   },
 }));
