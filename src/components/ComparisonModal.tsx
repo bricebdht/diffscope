@@ -245,7 +245,7 @@ export function ComparisonModal() {
           />
           <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
             <kbd className="px-1 py-0.5 border border-border rounded text-[10px]">A</kbd> approve
-            <kbd className="px-1 py-0.5 border border-border rounded text-[10px]">X</kbd> changes
+            <kbd className="px-1 py-0.5 border border-border rounded text-[10px]">X</kbd> reject
             <kbd className="px-1 py-0.5 border border-border rounded text-[10px]">← →</kbd> navigate
           </div>
         </div>
