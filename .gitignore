@@ -1,6 +1,9 @@
 # macOS
 .DS_Store
 
+# Example reports
+examples/
+
 # Test fixture outputs
 test-fixture/playwright-report/
 test-fixture/playwright-report.zip
