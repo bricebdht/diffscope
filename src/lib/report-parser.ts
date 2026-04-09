@@ -52,10 +52,10 @@ function createBlobUrlFromFile(file: File): string {
 }
 
 function extractZipFromHtml(htmlText: string): Uint8Array {
-  // Match <script id="playwrightReportBase64" type="application/zip">data:application/zip;base64,...</script>
-  // or <script ... playwrightReportBase64 ...>(data:application/zip;base64,...)</script>
+  // Match <script> or <template> with id="playwrightReportBase64" containing base64 ZIP data
+  // Older Playwright versions use <script>, newer ones use <template>
   const match = htmlText.match(
-    /<script[^>]*playwrightReportBase64[^>]*>(?:data:application\/zip;base64,)([A-Za-z0-9+/=\s]+)<\/script>/
+    /<(?:script|template)[^>]*playwrightReportBase64[^>]*>(?:data:application\/zip;base64,)([A-Za-z0-9+/=\s]+)<\/(?:script|template)>/
   );
   if (!match) {
     throw new Error('Could not find Playwright report data in HTML file');

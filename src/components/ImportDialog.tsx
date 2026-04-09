@@ -16,6 +16,7 @@ export function ImportDialog({ open, onClose }: ImportDialogProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState('');
+  const [progressPct, setProgressPct] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const { setDiffs, clearReport } = useReviewStore();
@@ -26,6 +27,7 @@ export function ImportDialog({ open, onClose }: ImportDialogProps) {
     const withCounts: DiffEntry[] = [...diffs];
 
     setProgress(`Computing pixel counts… 0/${diffs.length}`);
+    setProgressPct(0);
 
     // Process diffs with limited concurrency to avoid freezing the UI
     const queue = diffs.map((d, i) => async () => {
@@ -33,6 +35,7 @@ export function ImportDialog({ open, onClose }: ImportDialogProps) {
       withCounts[i] = { ...d, pixelCount };
       done++;
       setProgress(`Computing pixel counts… ${done}/${diffs.length}`);
+      setProgressPct(Math.round((done / diffs.length) * 100));
     });
 
     const executing = new Set<Promise<void>>();
@@ -71,6 +74,7 @@ export function ImportDialog({ open, onClose }: ImportDialogProps) {
     } finally {
       setLoading(false);
       setProgress('');
+      setProgressPct(null);
     }
   }, [clearReport, finalize]);
 
@@ -228,7 +232,14 @@ export function ImportDialog({ open, onClose }: ImportDialogProps) {
         {loading && (
           <div className="flex flex-col gap-2 items-center py-6">
             <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-              <div className="h-full bg-primary rounded-full animate-pulse w-2/3" />
+              {progressPct != null ? (
+                <div
+                  className="h-full bg-primary rounded-full transition-all duration-300"
+                  style={{ width: `${progressPct}%` }}
+                />
+              ) : (
+                <div className="h-full bg-primary rounded-full animate-pulse w-2/3" />
+              )}
             </div>
             <span className="text-xs text-muted-foreground">{progress}</span>
           </div>
