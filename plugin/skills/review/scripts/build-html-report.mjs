@@ -95,6 +95,8 @@ function render(manifest, suggestions) {
     .map(v => `<span class="split-${v}" style="width:${(counts[v] / total) * 100}%"></span>`)
     .join('');
 
+  // Only the report's name: the page gets shared, the local path is noise (and personal).
+  const reportName = path.basename(manifest.report);
   const generatedAt = suggestions.generatedAt ? new Date(suggestions.generatedAt).toLocaleString('en-GB') : '';
 
   return `<!doctype html>
@@ -172,7 +174,7 @@ function render(manifest, suggestions) {
 <body>
 <main>
   <h1>Diffscope review</h1>
-  <p class="sub">${esc(manifest.report)}${generatedAt ? ` · ${esc(generatedAt)}` : ''}</p>
+  <p class="sub">${esc(reportName)}${generatedAt ? ` · ${esc(generatedAt)}` : ''}</p>
   <section class="overview">
     <div class="overview-label">✦ Claude's review · ${rows.length} diff${rows.length === 1 ? '' : 's'}</div>
     ${suggestions.summary ? `<p class="overview-text">${esc(suggestions.summary)}</p>` : ''}

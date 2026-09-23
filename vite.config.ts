@@ -4,6 +4,8 @@ import tailwindcss from '@tailwindcss/vite'
 import { fileURLToPath, URL } from 'node:url'
 
 export default defineConfig({
+  // Relative asset paths, so the build works at a subpath like GitHub Pages' /diffscope/.
+  base: './',
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
