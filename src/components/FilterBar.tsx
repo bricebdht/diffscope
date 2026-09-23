@@ -10,8 +10,16 @@ import {
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 
+const AI_FILTER_ITEMS: Record<string, string> = {
+  '': 'All',
+  approve: 'Approve',
+  reject: 'Needs Changes',
+  unsure: 'Unsure',
+  none: 'No suggestion',
+};
+
 export function FilterBar() {
-  const { filters, setFilter, clearFilters, getStats, diffs, availableSuites } = useReviewStore();
+  const { filters, setFilter, clearFilters, getStats, diffs, availableSuites, aiSuggestions } = useReviewStore();
   const stats = getStats();
 
   if (diffs.length === 0) return null;
@@ -59,6 +67,22 @@ export function FilterBar() {
           <SelectItem value="changes">Needs Changes</SelectItem>
         </SelectContent>
       </Select>
+
+      {aiSuggestions && (
+        <>
+          <span className="text-xs text-muted-foreground">AI</span>
+          <Select items={AI_FILTER_ITEMS} value={filters.aiVerdict} onValueChange={(v) => setFilter('aiVerdict', v ?? '')}>
+            <SelectTrigger className="h-7 w-[130px] text-xs">
+              <SelectValue placeholder="All" />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(AI_FILTER_ITEMS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>{label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </>
+      )}
 
       <Input
         type="search"

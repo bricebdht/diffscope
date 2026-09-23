@@ -26,6 +26,8 @@ interface PlaywrightReport {
   files?: PlaywrightFile[];
 }
 
+// Must stay identical to hashCode() in plugin/skills/review/scripts/extract-report.mjs,
+// which computes the same ids for the AI suggestions file.
 function hashCode(str: string): string {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {

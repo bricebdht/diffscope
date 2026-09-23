@@ -25,3 +25,25 @@ export interface ReviewState {
   importedAt?: string;
 }
 
+
+export type AiVerdict = 'approve' | 'reject' | 'unsure';
+export type AiCategory = 'intended' | 'regression' | 'noise' | 'unknown';
+export type AiConfidence = 'high' | 'medium' | 'low';
+
+/** A pre-review suggestion for one diff, written by the Claude Code plugin (plugin/). */
+export interface AiSuggestion {
+  id: string;
+  verdict: AiVerdict;
+  category: AiCategory;
+  confidence: AiConfidence;
+  summary: string;
+  details?: string;
+  relatedFiles?: string[];
+  group?: string;
+}
+
+export interface AiSuggestions {
+  summary?: string;
+  generatedAt?: string;
+  byId: Record<string, AiSuggestion>;
+}
