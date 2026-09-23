@@ -82,6 +82,16 @@ function render(manifest, suggestions) {
     .map(([v, label], i) => `<button type="button" class="filter ${v}${i === 0 ? ' active' : ''}" data-filter="${v}">${esc(label)}</button>`)
     .join('');
 
+  const total = rows.length || 1;
+  const tiles = Object.entries(VERDICTS).map(([v, { label }]) => `<div class="tile ${v}">
+      <span class="tile-count">${counts[v]}</span>
+      <span class="tile-label">${esc(label)}</span>
+    </div>`).join('');
+  const split = Object.keys(VERDICTS)
+    .filter(v => counts[v] > 0)
+    .map(v => `<span class="split-${v}" style="width:${(counts[v] / total) * 100}%"></span>`)
+    .join('');
+
   const generatedAt = suggestions.generatedAt ? new Date(suggestions.generatedAt).toLocaleString('en-GB') : '';
 
   return `<!doctype html>
@@ -94,11 +104,13 @@ function render(manifest, suggestions) {
   :root {
     --bg: #f6f7f9; --panel: #ffffff; --text: #16181d; --muted: #5f6673; --border: #e2e5ea;
     --green: #15803d; --green-bg: #dcfce7; --red: #b91c1c; --red-bg: #fee2e2; --amber: #a16207; --amber-bg: #fef3c7;
+    --accent: #6d28d9; --accent-bg: #f3eefe; --accent-border: #d9c8fb;
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #0d0e11; --panel: #16181d; --text: #e8eaee; --muted: #9aa1ad; --border: #2a2e36;
       --green: #4ade80; --green-bg: #0f2a1a; --red: #f87171; --red-bg: #2d1414; --amber: #fbbf24; --amber-bg: #2b2210;
+      --accent: #c4b5fd; --accent-bg: #1c1530; --accent-border: #3b2d66;
     }
   }
   * { box-sizing: border-box; }
@@ -106,7 +118,19 @@ function render(manifest, suggestions) {
   main { max-width: 1200px; margin: 0 auto; padding: 32px 16px 64px; }
   h1 { font-size: 22px; margin: 0 0 4px; }
   .sub { color: var(--muted); margin: 0 0 20px; word-break: break-all; }
-  .summary-box { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 20px; font-size: 15px; }
+  .overview { background: linear-gradient(135deg, var(--accent-bg), var(--panel) 70%); border: 1px solid var(--accent-border); border-radius: 14px; padding: 20px; margin-bottom: 20px; }
+  .overview-label { color: var(--accent); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
+  .overview-text { font-size: 17px; line-height: 1.6; margin: 0 0 18px; }
+  .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .tile { border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; background: var(--amber-bg); color: var(--amber); }
+  .tile.reject { background: var(--red-bg); color: var(--red); }
+  .tile.approve { background: var(--green-bg); color: var(--green); }
+  .tile-count { font-size: 32px; font-weight: 800; line-height: 1.1; }
+  .tile-label { font-size: 13px; font-weight: 600; }
+  .split { display: flex; height: 8px; border-radius: 999px; overflow: hidden; margin-top: 14px; background: var(--border); }
+  .split-reject { background: var(--red); }
+  .split-unsure { background: var(--amber); }
+  .split-approve { background: var(--green); }
   .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; position: sticky; top: 0; padding: 10px 0; background: var(--bg); z-index: 1; }
   .filter { border: 1px solid var(--border); background: var(--panel); color: var(--text); border-radius: 999px; padding: 6px 14px; font: inherit; cursor: pointer; }
   .filter.active { border-color: var(--text); font-weight: 600; }
@@ -135,14 +159,23 @@ function render(manifest, suggestions) {
   .lightbox.open { display: flex; }
   .lightbox img { max-width: 100%; max-height: 100%; background: #fff; }
   .hidden { display: none; }
-  @media (max-width: 700px) { .shots { grid-template-columns: 1fr; } }
+  @media (max-width: 700px) {
+    .shots { grid-template-columns: 1fr; }
+    .overview-text { font-size: 15px; }
+    .tile-count { font-size: 26px; }
+  }
 </style>
 </head>
 <body>
 <main>
   <h1>Diffscope review</h1>
   <p class="sub">${esc(manifest.report)}${generatedAt ? ` · ${esc(generatedAt)}` : ''}</p>
-  ${suggestions.summary ? `<div class="summary-box">${esc(suggestions.summary)}</div>` : ''}
+  <section class="overview">
+    <div class="overview-label">✦ Claude's review · ${rows.length} diff${rows.length === 1 ? '' : 's'}</div>
+    ${suggestions.summary ? `<p class="overview-text">${esc(suggestions.summary)}</p>` : ''}
+    <div class="tiles">${tiles}</div>
+    <div class="split">${split}</div>
+  </section>
   <nav class="filters">${filters}</nav>
   ${rows.map(({ diff, s }) => diffCard(diff, s)).join('\n')}
 </main>
