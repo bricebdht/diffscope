@@ -13,6 +13,8 @@ interface PlaywrightResult {
 }
 
 interface PlaywrightTest {
+  testId?: string;
+  title?: string;
   projectName?: string;
   results?: PlaywrightResult[];
 }
@@ -26,8 +28,9 @@ interface PlaywrightReport {
   files?: PlaywrightFile[];
 }
 
-// Must stay identical to hashCode() in plugin/skills/review/scripts/extract-report.mjs,
-// which computes the same ids for the AI suggestions file.
+// Must stay identical to hashCode() and diffId() in
+// plugin/skills/review/scripts/extract-report.mjs, which computes the same ids
+// for the AI suggestions file.
 function hashCode(str: string): string {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
@@ -36,6 +39,17 @@ function hashCode(str: string): string {
     hash |= 0;
   }
   return Math.abs(hash).toString(16).slice(0, 8).padStart(8, '0');
+}
+
+/**
+ * Stable id of one screenshot diff: the test (Playwright's testId, which covers
+ * the spec file, the test title and the project) plus the snapshot name, so the
+ * same snapshot name in two specs or two projects gives two ids, while retries
+ * of the same test share one.
+ */
+function diffId(fileName: string, test: PlaywrightTest, baseName: string): string {
+  const testKey = test.testId ?? `${fileName}/${test.title ?? ''}/${test.projectName ?? ''}`;
+  return hashCode(`pw-report/${testKey}/${baseName}`);
 }
 
 function parseFileName(baseName: string): { description: string } {
@@ -83,7 +97,16 @@ async function buildDiffs(
   report: PlaywrightReport,
   resolveImage: ImageResolver,
 ): Promise<DiffEntry[]> {
-  const diffs: DiffEntry[] = [];
+  // Collect every diff first, keyed by id: a retried test reports the same diff
+  // once per attempt, and only the last attempt is kept.
+  const found = new Map<string, {
+    baseName: string;
+    suite: string;
+    viewport: DiffEntry['viewport'];
+    diffAtt: PlaywrightAttachment;
+    actualAtt?: PlaywrightAttachment;
+    expAtt?: PlaywrightAttachment;
+  }>();
 
   for (const file of (report.files || [])) {
     const fileName = file.fileName || '';
@@ -91,40 +114,47 @@ async function buildDiffs(
     const suite = fileName.replace(/\.spec\.\w+$/, '') || 'unknown';
 
     for (const test of (file.tests || [])) {
+      const viewport = test.projectName === 'phone' ? 'phone' : 'desktop';
       for (const result of (test.results || [])) {
         const attachments = result.attachments || [];
-        const diffAtt = attachments.find(a => a.name.endsWith('-diff.png'));
-        const actualAtt = attachments.find(a => a.name.endsWith('-actual.png'));
-        const expAtt = attachments.find(a => a.name.endsWith('-expected.png'));
-        if (!diffAtt) continue;
-
-        const baseName = diffAtt.name.replace(/-diff\.png$/, '');
-        const fileMeta = parseFileName(baseName);
-        const viewport = test.projectName === 'phone' ? 'phone' : 'desktop';
-        const id = hashCode(`pw-report/${baseName}/${viewport}`);
-
-        const [diffBlob, actualBlob, expectedBlob] = await Promise.all([
-          diffAtt.path ? resolveImage(diffAtt.path) : null,
-          actualAtt?.path ? resolveImage(actualAtt.path) : null,
-          expAtt?.path ? resolveImage(expAtt.path) : null,
-        ]);
-
-        diffs.push({
-          id,
-          baseName,
-          suite,
-          viewport,
-          description: fileMeta.description,
-          hasDiff: true,
-          pixelCount: null,
-          diffBlob,
-          actualBlob,
-          expectedBlob,
-          thumbBlob: diffBlob,
-        });
+        // A test can fail several screenshot assertions (expect.soft): one diff each.
+        for (const diffAtt of attachments.filter(a => a.name.endsWith('-diff.png'))) {
+          const baseName = diffAtt.name.replace(/-diff\.png$/, '');
+          found.set(diffId(fileName, test, baseName), {
+            baseName,
+            suite,
+            viewport,
+            diffAtt,
+            actualAtt: attachments.find(a => a.name === `${baseName}-actual.png`),
+            expAtt: attachments.find(a => a.name === `${baseName}-expected.png`),
+          });
+        }
       }
     }
   }
+
+  const diffs: DiffEntry[] = await Promise.all(
+    [...found].map(async ([id, { baseName, suite, viewport, diffAtt, actualAtt, expAtt }]) => {
+      const [diffBlob, actualBlob, expectedBlob] = await Promise.all([
+        diffAtt.path ? resolveImage(diffAtt.path) : null,
+        actualAtt?.path ? resolveImage(actualAtt.path) : null,
+        expAtt?.path ? resolveImage(expAtt.path) : null,
+      ]);
+      return {
+        id,
+        baseName,
+        suite,
+        viewport,
+        description: parseFileName(baseName).description,
+        hasDiff: true,
+        pixelCount: null,
+        diffBlob,
+        actualBlob,
+        expectedBlob,
+        thumbBlob: diffBlob,
+      };
+    }),
+  );
 
   // Sort: diffs first, then by suite, then description
   diffs.sort((a, b) => {

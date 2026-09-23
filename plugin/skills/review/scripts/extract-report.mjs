@@ -238,7 +238,7 @@ function findRegions(diff) {
 
 // --- Playwright report ---------------------------------------------------------
 
-// Must stay identical to hashCode() in src/lib/report-parser.ts.
+// hashCode() and diffId() must stay identical to the ones in src/lib/report-parser.ts.
 function hashCode(str) {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
@@ -246,6 +246,14 @@ function hashCode(str) {
     hash |= 0;
   }
   return Math.abs(hash).toString(16).slice(0, 8).padStart(8, '0');
+}
+
+// Playwright's testId covers the spec file, the test title and the project, so the
+// same snapshot name in two specs or two projects gives two ids, while retries of
+// the same test share one.
+function diffId(fileName, test, snapshot) {
+  const testKey = test.testId ?? `${fileName}/${test.title ?? ''}/${test.projectName ?? ''}`;
+  return hashCode(`pw-report/${testKey}/${snapshot}`);
 }
 
 function extractEmbeddedZip(html) {
@@ -325,61 +333,63 @@ function main() {
     const suite = specFile.replace(/\.spec\.\w+$/, '') || 'unknown';
 
     for (const test of file.tests || []) {
+      const viewport = test.projectName === 'phone' ? 'phone' : 'desktop';
       for (const result of test.results || []) {
         const attachments = result.attachments || [];
-        const diffAtt = attachments.find(a => a.name.endsWith('-diff.png'));
-        if (!diffAtt) continue;
-        const actualAtt = attachments.find(a => a.name.endsWith('-actual.png'));
-        const expectedAtt = attachments.find(a => a.name.endsWith('-expected.png'));
+        // A test can fail several screenshot assertions (expect.soft): one diff each.
+        for (const diffAtt of attachments.filter(a => a.name.endsWith('-diff.png'))) {
+          const snapshot = diffAtt.name.replace(/-diff\.png$/, '');
+          const actualAtt = attachments.find(a => a.name === `${snapshot}-actual.png`);
+          const expectedAtt = attachments.find(a => a.name === `${snapshot}-expected.png`);
+          const id = diffId(specFile, test, snapshot);
+          const dir = path.join(out, id);
+          // A retry of the same test replaces the previous attempt's files.
+          fs.rmSync(dir, { recursive: true, force: true });
+          fs.mkdirSync(dir, { recursive: true });
 
-        const snapshot = diffAtt.name.replace(/-diff\.png$/, '');
-        const viewport = test.projectName === 'phone' ? 'phone' : 'desktop';
-        const id = hashCode(`pw-report/${snapshot}/${viewport}`);
-        const dir = path.join(out, id);
-        fs.mkdirSync(dir, { recursive: true });
+          const images = {};
+          const decoded = {};
+          for (const [kind, att] of [['expected', expectedAtt], ['actual', actualAtt], ['diff', diffAtt]]) {
+            const bytes = att?.path ? report.readAttachment(att.path) : null;
+            if (!bytes) continue;
+            images[kind] = path.join(dir, `${kind}.png`);
+            fs.writeFileSync(images[kind], bytes);
+            decoded[kind] = decodePng(Buffer.from(bytes));
+          }
 
-        const images = {};
-        const decoded = {};
-        for (const [kind, att] of [['expected', expectedAtt], ['actual', actualAtt], ['diff', diffAtt]]) {
-          const bytes = att?.path ? report.readAttachment(att.path) : null;
-          if (!bytes) continue;
-          images[kind] = path.join(dir, `${kind}.png`);
-          fs.writeFileSync(images[kind], bytes);
-          decoded[kind] = decodePng(Buffer.from(bytes));
-        }
+          let changedPixels = null;
+          let regions = [];
+          if (decoded.diff) {
+            ({ changedPixels, regions } = findRegions(decoded.diff));
+            regions = regions.map((region, i) => {
+              const closeUps = {};
+              for (const kind of ['expected', 'actual', 'diff']) {
+                const cropped = decoded[kind] && crop(decoded[kind], region);
+                if (!cropped) continue;
+                closeUps[kind] = path.join(dir, `region-${i + 1}-${kind}.png`);
+                fs.writeFileSync(closeUps[kind], encodePng(cropped));
+              }
+              return { ...region, images: closeUps };
+            });
+          }
 
-        let changedPixels = null;
-        let regions = [];
-        if (decoded.diff) {
-          ({ changedPixels, regions } = findRegions(decoded.diff));
-          regions = regions.map((region, i) => {
-            const closeUps = {};
-            for (const kind of ['expected', 'actual', 'diff']) {
-              const cropped = decoded[kind] && crop(decoded[kind], region);
-              if (!cropped) continue;
-              closeUps[kind] = path.join(dir, `region-${i + 1}-${kind}.png`);
-              fs.writeFileSync(closeUps[kind], encodePng(cropped));
-            }
-            return { ...region, images: closeUps };
+          // Retries produce one result each; keep the last one, like the report UI.
+          byId.set(id, {
+            id,
+            snapshot,
+            suite,
+            specFile,
+            testTitle: test.title ?? null,
+            projectName: test.projectName ?? null,
+            viewport,
+            size: decoded.diff ? { width: decoded.diff.width, height: decoded.diff.height } : null,
+            expectedSize: decoded.expected ? { width: decoded.expected.width, height: decoded.expected.height } : null,
+            actualSize: decoded.actual ? { width: decoded.actual.width, height: decoded.actual.height } : null,
+            changedPixels,
+            images,
+            regions,
           });
         }
-
-        // Retries produce one result each; keep the last one, like the report UI.
-        byId.set(id, {
-          id,
-          snapshot,
-          suite,
-          specFile,
-          testTitle: test.title ?? null,
-          projectName: test.projectName ?? null,
-          viewport,
-          size: decoded.diff ? { width: decoded.diff.width, height: decoded.diff.height } : null,
-          expectedSize: decoded.expected ? { width: decoded.expected.width, height: decoded.expected.height } : null,
-          actualSize: decoded.actual ? { width: decoded.actual.width, height: decoded.actual.height } : null,
-          changedPixels,
-          images,
-          regions,
-        });
       }
     }
   }

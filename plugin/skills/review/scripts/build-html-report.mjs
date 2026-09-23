@@ -23,6 +23,9 @@ const CATEGORIES = {
   unknown: 'Unclear',
 };
 
+// Any verdict outside the documented ones is shown as "unsure".
+const verdictOf = (s) => (VERDICTS[s?.verdict] ? s.verdict : 'unsure');
+
 const esc = (value) => String(value ?? '')
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
@@ -43,7 +46,7 @@ function imageTriplet(images, caption) {
 }
 
 function diffCard(diff, s) {
-  const verdict = VERDICTS[s?.verdict] ? s.verdict : 'unsure';
+  const verdict = verdictOf(s);
   // Close-ups when the extractor found changed regions, full screenshots otherwise.
   const regions = diff.regions?.length
     ? diff.regions.map((r, i) => imageTriplet(r.images, diff.regions.length > 1 ? `Region ${i + 1}` : '')).join('')
@@ -71,12 +74,12 @@ function render(manifest, suggestions) {
   const rows = manifest.diffs
     .map(diff => ({ diff, s: byId.get(diff.id) }))
     .sort((a, b) =>
-      VERDICTS[a.s?.verdict ?? 'unsure'].order - VERDICTS[b.s?.verdict ?? 'unsure'].order
+      VERDICTS[verdictOf(a.s)].order - VERDICTS[verdictOf(b.s)].order
       || (a.s?.group ?? '').localeCompare(b.s?.group ?? '')
       || a.diff.snapshot.localeCompare(b.diff.snapshot));
 
   const counts = { reject: 0, unsure: 0, approve: 0 };
-  for (const { s } of rows) counts[VERDICTS[s?.verdict] ? s.verdict : 'unsure']++;
+  for (const { s } of rows) counts[verdictOf(s)]++;
 
   const filters = [['all', `All ${rows.length}`], ...Object.entries(VERDICTS).map(([v, { label }]) => [v, `${label} ${counts[v]}`])]
     .map(([v, label], i) => `<button type="button" class="filter ${v}${i === 0 ? ' active' : ''}" data-filter="${v}">${esc(label)}</button>`)
