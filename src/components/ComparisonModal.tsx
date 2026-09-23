@@ -120,12 +120,31 @@ export function ComparisonModal() {
         if (e.target === e.currentTarget) closeModal();
       }}
     >
-      <div className="bg-card border border-border rounded-xl w-[min(95vw,1200px)] max-h-[95vh] flex flex-col overflow-hidden shadow-2xl">
+      <div
+        className={cn(
+          'bg-card border rounded-xl w-[min(95vw,1200px)] max-h-[95vh] flex flex-col overflow-hidden shadow-2xl',
+          status === 'approved' && 'border-2 border-green-600',
+          status === 'changes' && 'border-2 border-red-600',
+          status === 'pending' && 'border-border'
+        )}
+      >
         {/* Header */}
         <div className="px-4 py-3 border-b border-border flex items-center gap-2.5 flex-wrap min-h-[52px]">
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={closeModal}>
             <X className="h-4 w-4" />
           </Button>
+          {status === 'approved' && (
+            <span className="flex items-center gap-1 rounded-md bg-green-600 px-2 py-0.5 text-xs font-semibold text-white">
+              <Check className="h-3.5 w-3.5" />
+              Approved
+            </span>
+          )}
+          {status === 'changes' && (
+            <span className="flex items-center gap-1 rounded-md bg-red-600 px-2 py-0.5 text-xs font-semibold text-white">
+              <X className="h-3.5 w-3.5" />
+              Needs Changes
+            </span>
+          )}
           <span className="text-sm font-semibold flex-1 min-w-0 truncate">{diff.description}</span>
           <div className="flex gap-1">
             <Badge variant="secondary" className="text-[10px]">{diff.suite}</Badge>
@@ -197,13 +216,13 @@ export function ComparisonModal() {
             className={cn(
               'gap-1 text-xs',
               status === 'approved'
-                ? 'bg-green-900 border-green-700 text-green-300 hover:bg-green-800'
+                ? 'bg-green-600 border-green-500 text-white hover:bg-green-500 hover:text-white'
                 : 'bg-green-950/50 border-green-900 text-green-400 hover:bg-green-900 hover:text-green-300'
             )}
             onClick={() => handleReview('approved')}
           >
             <Check className="h-3.5 w-3.5" />
-            Approve
+            {status === 'approved' ? 'Approved' : 'Approve'}
           </Button>
           <Button
             variant="outline"
@@ -211,7 +230,7 @@ export function ComparisonModal() {
             className={cn(
               'gap-1 text-xs',
               status === 'changes'
-                ? 'bg-red-900 border-red-700 text-red-300 hover:bg-red-800'
+                ? 'bg-red-600 border-red-500 text-white hover:bg-red-500 hover:text-white'
                 : 'bg-red-950/50 border-red-900 text-red-400 hover:bg-red-900 hover:text-red-300'
             )}
             onClick={() => handleReview('changes')}
