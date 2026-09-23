@@ -1,19 +1,32 @@
 ---
 name: review
 description: Review the screenshot diffs of a Playwright visual regression report and write a Diffscope suggestions file (approve / reject verdict, category and explanation per diff), using the current branch's code changes as context. Use when the user wants help triaging a Playwright HTML report or its visual diffs.
-argument-hint: "[playwright-report folder | index.html | report.zip]"
-allowed-tools: Bash(node "${CLAUDE_SKILL_DIR}/scripts/extract-report.mjs" *) Bash(node "${CLAUDE_SKILL_DIR}/scripts/build-html-report.mjs" *)
+argument-hint: "[report folder | index.html | report.zip | --run <id> | --branch <name>]"
+allowed-tools: Bash(node "${CLAUDE_SKILL_DIR}/scripts/fetch-ci-report.mjs" *) Bash(node "${CLAUDE_SKILL_DIR}/scripts/extract-report.mjs" *) Bash(node "${CLAUDE_SKILL_DIR}/scripts/build-html-report.mjs" *)
 ---
 
 # Review a Playwright visual regression report
 
 You pre-review every screenshot diff of a Playwright report so the user can go through them faster in Diffscope. You do not make the final decision: you write suggestions that Diffscope shows next to each diff.
 
-## 1. Find the report
+## 1. Get the report
 
-Report argument: `$ARGUMENTS`
+Arguments: `$ARGUMENTS`
 
-If it is empty, look for `playwright-report/` (or a `playwright-report*.zip`) in the project, including one level of subfolders. If there are several candidates, or none, ask the user which one to use.
+**A local path** (a `playwright-report/` folder, its `index.html`, or a `.zip`): use it and go to step 2.
+
+**Nothing, or only options** (`--run <id>`, `--branch <name>`, `--artifact <name>`): download the report of the branch's latest GitHub Actions run, passing the options through:
+
+```bash
+node "${CLAUDE_SKILL_DIR}/scripts/fetch-ci-report.mjs" <options>
+```
+
+It uses the GitHub CLI (`gh`), looks through the branch's recent completed runs for a Playwright report artifact, downloads it, and prints a JSON summary: `reportDir` (the local report folder to use from now on), the run (workflow, conclusion, date, URL, `headSha`), the artifact name, and `matchesLocalHead`.
+
+- Tell the user in one line which run you're reviewing (workflow, date, conclusion, URL).
+- If `matchesLocalHead` is false, the CI tested another commit than the local checkout (new local commits, or a branch you haven't pulled). Say so, and use `headSha` as the code reference in step 3.
+- If `runsInProgress` is above 0, mention that a newer run is still in progress.
+- If the script fails (no `gh`, not logged in, no run or no report artifact), explain why, then look for a local `playwright-report/` (or `playwright-report*.zip`) in the project, including one level of subfolders. If there are several candidates, or none, ask the user.
 
 ## 2. Extract the diffs
 
@@ -33,7 +46,7 @@ If `expectedSize` and `actualSize` differ, the page or component changed size: s
 The point of running this in Claude Code is that you can relate each visual change to the code change that caused it.
 
 - Find the base branch: `gh pr view --json baseRefName -q .baseRefName` if the branch has a PR, otherwise the default branch (`main` or `master`).
-- Look at `git diff <base>...HEAD` (plus uncommitted changes), focusing on styles, components, templates, assets, fonts and design tokens.
+- Look at `git diff <base>...HEAD` (plus uncommitted changes), focusing on styles, components, templates, assets, fonts and design tokens. When the report comes from CI, diff against the run's `headSha` instead of `HEAD` (and skip uncommitted changes), fetching it first if it isn't available locally.
 - Read the spec files from the manifest (`specFile`) when you need to know which page or component a snapshot shows.
 
 If there is no git repository or no relevant change, still review the diffs from the images alone, and say so in the summary.
@@ -98,6 +111,6 @@ It writes `diffscope-review.html` next to the suggestions file: your summary, th
 
 Tell the user, briefly:
 
-- where the review page and the suggestions file are, and that they can import the suggestions in Diffscope with the **AI suggestions** button in the header once the report is loaded;
+- where the review page and the suggestions file are, and that they can import the suggestions in Diffscope with the **AI suggestions** button in the header once the report is loaded (when the report was downloaded from CI, give the report folder path too: that's the folder to drop into Diffscope);
 - how many diffs you suggest approving, rejecting, and are unsure about;
 - the diffs that deserve a close look (regressions and low-confidence verdicts), one line each.

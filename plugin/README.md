@@ -13,13 +13,21 @@ In Claude Code:
 
 ## Use
 
-From the repository whose Playwright report you want to review:
+From the repository whose Playwright report you want to review, on the branch to review:
 
 ```shell
-/diffscope:review playwright-report
+/diffscope:review
 ```
 
-The argument can be the `playwright-report/` folder, its `index.html`, or a `.zip` of it. Without an argument, Claude looks for a report in the project.
+Without an argument, Claude downloads the Playwright report of the branch's latest GitHub Actions run with the GitHub CLI (`gh`, logged in). It picks the most recent completed run that uploaded a report artifact (`playwright-report`, or a name containing `playwright-report` / `html-report`; sharded `blob-report` artifacts are skipped). Options:
+
+```shell
+/diffscope:review --run 1234567890          # a specific run
+/diffscope:review --branch feature/header   # another branch
+/diffscope:review --artifact e2e-report     # an artifact with a custom name
+```
+
+You can also review a local report: pass the `playwright-report/` folder, its `index.html`, or a `.zip` of it.
 
 Claude:
 

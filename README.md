@@ -25,10 +25,10 @@ The `plugin/` folder is a Claude Code plugin that pre-reviews a report with Clau
 ```shell
 /plugin marketplace add bricebdht/diffscope
 /plugin install diffscope@diffscope
-/diffscope:review playwright-report
+/diffscope:review
 ```
 
-It opens a standalone HTML page with its conclusions, and writes `diffscope-suggestions.json` next to the report: import it with the **AI suggestions** button once the report is loaded to see the verdicts in Diffscope. See [plugin/README.md](plugin/README.md).
+It downloads the Playwright report of your branch's latest GitHub Actions run (or takes a local report path), then opens a standalone HTML page with its conclusions, and writes `diffscope-suggestions.json` next to the report: import it with the **AI suggestions** button once the report is loaded to see the verdicts in Diffscope. See [plugin/README.md](plugin/README.md).
 
 ## Tech stack
 
