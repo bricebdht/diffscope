@@ -15,6 +15,7 @@ import {
   SkipForward,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { DiffEntry } from '@/lib/types';
 
 export function ComparisonModal() {
   const {
@@ -42,38 +43,29 @@ export function ComparisonModal() {
   const handleReview = useCallback((status: 'approved' | 'changes') => {
     if (!diff) return;
     const reviewedId = diff.id;
+
+    // Pick the next pending diff from the order *before* the review: once reviewed,
+    // the diff moves to another section, so its new position says nothing about "next".
+    const before = useReviewStore.getState().filteredDiffs;
+    const currentIdx = before.findIndex(d => d.id === reviewedId);
+    const isNextCandidate = (d: DiffEntry) => d.id !== reviewedId && getStatus(d.id) === 'pending';
+    const nextId = (
+      before.slice(currentIdx + 1).find(isNextCandidate) ??
+      before.slice(0, Math.max(currentIdx, 0)).find(isNextCandidate)
+    )?.id;
+
     setReview(reviewedId, status, comment);
 
-    // Read fresh state after the store update — filteredDiffs may have changed
+    // Read fresh state after the store update — filteredDiffs has been re-sorted
     const store = useReviewStore.getState();
-    const freshDiffs = store.filteredDiffs;
-    const freshGetStatus = store.getStatus;
-
-    // Find where the reviewed diff sits now (it may have been removed by the active filter)
-    const currentIdx = freshDiffs.findIndex(d => d.id === reviewedId);
-
-    // Search forward from the position after the reviewed diff (or from 0 if it was removed)
-    const searchStart = currentIdx === -1 ? 0 : currentIdx + 1;
-
-    let nextIdx = -1;
-    // Forward scan
-    for (let i = searchStart; i < freshDiffs.length; i++) {
-      if (freshGetStatus(freshDiffs[i].id) === 'pending') { nextIdx = i; break; }
-    }
-    // Wrap-around scan
-    if (nextIdx === -1) {
-      const wrapEnd = currentIdx === -1 ? freshDiffs.length : currentIdx;
-      for (let i = 0; i < wrapEnd; i++) {
-        if (freshGetStatus(freshDiffs[i].id) === 'pending') { nextIdx = i; break; }
-      }
-    }
+    const nextIdx = nextId ? store.filteredDiffs.findIndex(d => d.id === nextId) : -1;
 
     if (nextIdx !== -1) {
       store.openModal(nextIdx);
     } else {
       closeModal();
     }
-  }, [diff, comment, setReview, closeModal]);
+  }, [diff, comment, setReview, closeModal, getStatus]);
 
   const handleSkip = useCallback(() => {
     navigate(1);
@@ -128,12 +120,31 @@ export function ComparisonModal() {
         if (e.target === e.currentTarget) closeModal();
       }}
     >
-      <div className="bg-card border border-border rounded-xl w-[min(95vw,1200px)] max-h-[95vh] flex flex-col overflow-hidden shadow-2xl">
+      <div
+        className={cn(
+          'bg-card border rounded-xl w-[min(95vw,1200px)] max-h-[95vh] flex flex-col overflow-hidden shadow-2xl',
+          status === 'approved' && 'border-2 border-green-600',
+          status === 'changes' && 'border-2 border-red-600',
+          status === 'pending' && 'border-border'
+        )}
+      >
         {/* Header */}
         <div className="px-4 py-3 border-b border-border flex items-center gap-2.5 flex-wrap min-h-[52px]">
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={closeModal}>
             <X className="h-4 w-4" />
           </Button>
+          {status === 'approved' && (
+            <span className="flex items-center gap-1 rounded-md bg-green-600 px-2 py-0.5 text-xs font-semibold text-white">
+              <Check className="h-3.5 w-3.5" />
+              Approved
+            </span>
+          )}
+          {status === 'changes' && (
+            <span className="flex items-center gap-1 rounded-md bg-red-600 px-2 py-0.5 text-xs font-semibold text-white">
+              <X className="h-3.5 w-3.5" />
+              Needs Changes
+            </span>
+          )}
           <span className="text-sm font-semibold flex-1 min-w-0 truncate">{diff.description}</span>
           <div className="flex gap-1">
             <Badge variant="secondary" className="text-[10px]">{diff.suite}</Badge>
@@ -205,13 +216,13 @@ export function ComparisonModal() {
             className={cn(
               'gap-1 text-xs',
               status === 'approved'
-                ? 'bg-green-900 border-green-700 text-green-300 hover:bg-green-800'
+                ? 'bg-green-600 border-green-500 text-white hover:bg-green-500 hover:text-white'
                 : 'bg-green-950/50 border-green-900 text-green-400 hover:bg-green-900 hover:text-green-300'
             )}
             onClick={() => handleReview('approved')}
           >
             <Check className="h-3.5 w-3.5" />
-            Approve
+            {status === 'approved' ? 'Approved' : 'Approve'}
           </Button>
           <Button
             variant="outline"
@@ -219,7 +230,7 @@ export function ComparisonModal() {
             className={cn(
               'gap-1 text-xs',
               status === 'changes'
-                ? 'bg-red-900 border-red-700 text-red-300 hover:bg-red-800'
+                ? 'bg-red-600 border-red-500 text-white hover:bg-red-500 hover:text-white'
                 : 'bg-red-950/50 border-red-900 text-red-400 hover:bg-red-900 hover:text-red-300'
             )}
             onClick={() => handleReview('changes')}

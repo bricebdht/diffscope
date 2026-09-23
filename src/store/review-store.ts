@@ -40,7 +40,8 @@ interface ReviewStore {
   filters: Filters;
   modalIndex: number | null;
   compareMode: CompareMode;
-  reviewedSectionOpen: boolean;
+  rejectedSectionOpen: boolean;
+  approvedSectionOpen: boolean;
 
   // Computed
   filteredDiffs: DiffEntry[];
@@ -55,7 +56,8 @@ interface ReviewStore {
   navigate: (delta: number) => void;
   setCompareMode: (mode: CompareMode) => void;
   setReview: (id: string, status: ReviewStatus, comment?: string) => void;
-  toggleReviewedSection: () => void;
+  toggleRejectedSection: () => void;
+  toggleApprovedSection: () => void;
   getStatus: (id: string) => ReviewStatus;
   getComment: (id: string) => string;
   getStats: () => { total: number; pending: number; approved: number; changes: number };
@@ -70,8 +72,27 @@ const defaultFilters: Filters = {
   diffsOnly: true,
 };
 
+// Matches the DiffGrid layout: pending grouped by suite, then Needs Changes, then Approved.
+// Keeping filteredDiffs in this order makes modal navigation follow what's on screen.
+function sortForDisplay(diffs: DiffEntry[], reviewState: ReviewState): DiffEntry[] {
+  const pendingBySuite = new Map<string, DiffEntry[]>();
+  const rejected: DiffEntry[] = [];
+  const approved: DiffEntry[] = [];
+  for (const d of diffs) {
+    const s = reviewState.diffs[d.id]?.status || 'pending';
+    if (s === 'changes') rejected.push(d);
+    else if (s === 'approved') approved.push(d);
+    else {
+      const group = pendingBySuite.get(d.suite);
+      if (group) group.push(d);
+      else pendingBySuite.set(d.suite, [d]);
+    }
+  }
+  return [...[...pendingBySuite.values()].flat(), ...rejected, ...approved];
+}
+
 function applyFilters(diffs: DiffEntry[], filters: Filters, reviewState: ReviewState): DiffEntry[] {
-  return diffs.filter(d => {
+  return sortForDisplay(diffs.filter(d => {
     if (filters.diffsOnly && !d.hasDiff) return false;
     if (filters.suite && d.suite !== filters.suite) return false;
     if (filters.viewport && d.viewport !== filters.viewport) return false;
@@ -87,7 +108,7 @@ function applyFilters(diffs: DiffEntry[], filters: Filters, reviewState: ReviewS
       if (!haystack.includes(q)) return false;
     }
     return true;
-  });
+  }), reviewState);
 }
 
 export const useReviewStore = create<ReviewStore>((set, get) => ({
@@ -96,7 +117,8 @@ export const useReviewStore = create<ReviewStore>((set, get) => ({
   filters: { ...defaultFilters },
   modalIndex: null,
   compareMode: 'sidebyside',
-  reviewedSectionOpen: false,
+  rejectedSectionOpen: true,
+  approvedSectionOpen: false,
   filteredDiffs: [],
   availableSuites: [],
 
@@ -152,7 +174,8 @@ export const useReviewStore = create<ReviewStore>((set, get) => ({
     set({ reviewState: newReviewState, filteredDiffs });
   },
 
-  toggleReviewedSection: () => set(s => ({ reviewedSectionOpen: !s.reviewedSectionOpen })),
+  toggleRejectedSection: () => set(s => ({ rejectedSectionOpen: !s.rejectedSectionOpen })),
+  toggleApprovedSection: () => set(s => ({ approvedSectionOpen: !s.approvedSectionOpen })),
 
   getStatus: (id) => {
     return get().reviewState.diffs[id]?.status || 'pending';
