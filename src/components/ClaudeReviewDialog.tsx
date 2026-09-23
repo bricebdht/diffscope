@@ -81,6 +81,8 @@ export function ClaudeReviewDialog() {
         throw new Error('None of these suggestions match the diffs of the loaded report. Was it generated from this report?');
       }
       setAiSuggestions(ai);
+      // Nothing left to do here: the verdicts now show on the grid.
+      setOpen(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not read the suggestions file.');
     }
@@ -177,15 +179,20 @@ export function ClaudeReviewDialog() {
               </ul>
             </div>
             {dropZone}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="self-start gap-1.5 text-xs text-muted-foreground"
-              onClick={() => { setAiSuggestions(null); setError(null); }}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              Remove Claude's suggestions
-            </Button>
+            <div className="flex items-center justify-between gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1.5 text-xs text-muted-foreground"
+                onClick={() => { setAiSuggestions(null); setError(null); }}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Remove Claude's suggestions
+              </Button>
+              <Button size="sm" onClick={() => setOpen(false)}>
+                Close
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="flex flex-col gap-4 text-sm">
