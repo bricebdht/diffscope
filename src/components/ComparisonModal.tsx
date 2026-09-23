@@ -15,6 +15,7 @@ import {
   SkipForward,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { DiffEntry } from '@/lib/types';
 
 export function ComparisonModal() {
   const {
@@ -42,38 +43,29 @@ export function ComparisonModal() {
   const handleReview = useCallback((status: 'approved' | 'changes') => {
     if (!diff) return;
     const reviewedId = diff.id;
+
+    // Pick the next pending diff from the order *before* the review: once reviewed,
+    // the diff moves to another section, so its new position says nothing about "next".
+    const before = useReviewStore.getState().filteredDiffs;
+    const currentIdx = before.findIndex(d => d.id === reviewedId);
+    const isNextCandidate = (d: DiffEntry) => d.id !== reviewedId && getStatus(d.id) === 'pending';
+    const nextId = (
+      before.slice(currentIdx + 1).find(isNextCandidate) ??
+      before.slice(0, Math.max(currentIdx, 0)).find(isNextCandidate)
+    )?.id;
+
     setReview(reviewedId, status, comment);
 
-    // Read fresh state after the store update — filteredDiffs may have changed
+    // Read fresh state after the store update — filteredDiffs has been re-sorted
     const store = useReviewStore.getState();
-    const freshDiffs = store.filteredDiffs;
-    const freshGetStatus = store.getStatus;
-
-    // Find where the reviewed diff sits now (it may have been removed by the active filter)
-    const currentIdx = freshDiffs.findIndex(d => d.id === reviewedId);
-
-    // Search forward from the position after the reviewed diff (or from 0 if it was removed)
-    const searchStart = currentIdx === -1 ? 0 : currentIdx + 1;
-
-    let nextIdx = -1;
-    // Forward scan
-    for (let i = searchStart; i < freshDiffs.length; i++) {
-      if (freshGetStatus(freshDiffs[i].id) === 'pending') { nextIdx = i; break; }
-    }
-    // Wrap-around scan
-    if (nextIdx === -1) {
-      const wrapEnd = currentIdx === -1 ? freshDiffs.length : currentIdx;
-      for (let i = 0; i < wrapEnd; i++) {
-        if (freshGetStatus(freshDiffs[i].id) === 'pending') { nextIdx = i; break; }
-      }
-    }
+    const nextIdx = nextId ? store.filteredDiffs.findIndex(d => d.id === nextId) : -1;
 
     if (nextIdx !== -1) {
       store.openModal(nextIdx);
     } else {
       closeModal();
     }
-  }, [diff, comment, setReview, closeModal]);
+  }, [diff, comment, setReview, closeModal, getStatus]);
 
   const handleSkip = useCallback(() => {
     navigate(1);
