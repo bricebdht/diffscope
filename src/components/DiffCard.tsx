@@ -3,6 +3,8 @@ import { useReviewStore } from '@/store/review-store';
 import type { DiffEntry } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Check, X, Smartphone } from 'lucide-react';
+import { AiVerdictBadge } from './AiVerdictBadge';
+import { AI_VERDICT_LABELS } from '@/lib/ai-labels';
 
 interface DiffCardProps {
   diff: DiffEntry;
@@ -12,6 +14,7 @@ interface DiffCardProps {
 export function DiffCard({ diff, onClick }: DiffCardProps) {
   const getStatus = useReviewStore(s => s.getStatus);
   const status = getStatus(diff.id);
+  const suggestion = useReviewStore(s => s.aiSuggestions?.byId[diff.id]);
 
   return (
     <button
@@ -62,6 +65,16 @@ export function DiffCard({ diff, onClick }: DiffCardProps) {
         {status === 'changes' && (
           <span className="absolute bottom-1 right-1 bg-red-500 text-white rounded p-0.5">
             <X className="h-3 w-3" />
+          </span>
+        )}
+
+        {/* Claude's suggested verdict */}
+        {suggestion && (
+          <span
+            className="absolute bottom-1 left-1"
+            title={`Claude suggests: ${AI_VERDICT_LABELS[suggestion.verdict]}${suggestion.summary ? ` — ${suggestion.summary}` : ''}`}
+          >
+            <AiVerdictBadge verdict={suggestion.verdict} />
           </span>
         )}
 

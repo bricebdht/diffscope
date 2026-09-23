@@ -1,7 +1,8 @@
 import { create } from 'zustand';
-import type { DiffEntry, ReviewStatus, ReviewState } from '@/lib/types';
+import type { AiSuggestions, DiffEntry, ReviewStatus, ReviewState } from '@/lib/types';
 
 const STORAGE_KEY = 'diffscope-review-state';
+const AI_STORAGE_KEY = 'diffscope-ai-suggestions';
 
 function loadState(): ReviewState {
   try {
@@ -21,6 +22,25 @@ function saveState(state: ReviewState) {
   }
 }
 
+function loadAiSuggestions(): AiSuggestions | null {
+  try {
+    const raw = localStorage.getItem(AI_STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
+function saveAiSuggestions(ai: AiSuggestions | null) {
+  try {
+    if (ai) localStorage.setItem(AI_STORAGE_KEY, JSON.stringify(ai));
+    else localStorage.removeItem(AI_STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
 export type CompareMode = 'sidebyside' | 'slider';
 
 export interface Filters {
@@ -29,12 +49,14 @@ export interface Filters {
   status: string;
   search: string;
   diffsOnly: boolean;
+  aiVerdict: string;
 }
 
 interface ReviewStore {
   // Data
   diffs: DiffEntry[];
   reviewState: ReviewState;
+  aiSuggestions: AiSuggestions | null;
 
   // UI state
   filters: Filters;
@@ -56,6 +78,7 @@ interface ReviewStore {
   navigate: (delta: number) => void;
   setCompareMode: (mode: CompareMode) => void;
   setReview: (id: string, status: ReviewStatus, comment?: string) => void;
+  setAiSuggestions: (ai: AiSuggestions | null) => void;
   toggleRejectedSection: () => void;
   toggleApprovedSection: () => void;
   getStatus: (id: string) => ReviewStatus;
@@ -70,6 +93,7 @@ const defaultFilters: Filters = {
   status: '',
   search: '',
   diffsOnly: true,
+  aiVerdict: '',
 };
 
 // Matches the DiffGrid layout: pending grouped by suite, then Needs Changes, then Approved.
@@ -91,7 +115,12 @@ function sortForDisplay(diffs: DiffEntry[], reviewState: ReviewState): DiffEntry
   return [...[...pendingBySuite.values()].flat(), ...rejected, ...approved];
 }
 
-function applyFilters(diffs: DiffEntry[], filters: Filters, reviewState: ReviewState): DiffEntry[] {
+function applyFilters(
+  diffs: DiffEntry[],
+  filters: Filters,
+  reviewState: ReviewState,
+  aiSuggestions: AiSuggestions | null,
+): DiffEntry[] {
   return sortForDisplay(diffs.filter(d => {
     if (filters.diffsOnly && !d.hasDiff) return false;
     if (filters.suite && d.suite !== filters.suite) return false;
@@ -101,6 +130,10 @@ function applyFilters(diffs: DiffEntry[], filters: Filters, reviewState: ReviewS
       if (filters.status === 'pending' && s !== 'pending') return false;
       if (filters.status === 'approved' && s !== 'approved') return false;
       if (filters.status === 'changes' && s !== 'changes') return false;
+    }
+    if (filters.aiVerdict) {
+      const verdict = aiSuggestions?.byId[d.id]?.verdict;
+      if (filters.aiVerdict === 'none' ? verdict : verdict !== filters.aiVerdict) return false;
     }
     if (filters.search) {
       const q = filters.search.toLowerCase();
@@ -114,6 +147,7 @@ function applyFilters(diffs: DiffEntry[], filters: Filters, reviewState: ReviewS
 export const useReviewStore = create<ReviewStore>((set, get) => ({
   diffs: [],
   reviewState: loadState(),
+  aiSuggestions: loadAiSuggestions(),
   filters: { ...defaultFilters },
   modalIndex: null,
   compareMode: 'sidebyside',
@@ -124,7 +158,7 @@ export const useReviewStore = create<ReviewStore>((set, get) => ({
 
   setDiffs: (diffs) => {
     const state = get();
-    const filteredDiffs = applyFilters(diffs, state.filters, state.reviewState);
+    const filteredDiffs = applyFilters(diffs, state.filters, state.reviewState, state.aiSuggestions);
     const availableSuites = [...new Set(diffs.map(d => d.suite))].sort();
     set({ diffs, filteredDiffs, availableSuites });
   },
@@ -132,13 +166,13 @@ export const useReviewStore = create<ReviewStore>((set, get) => ({
   setFilter: (key, value) => {
     const state = get();
     const newFilters = { ...state.filters, [key]: value };
-    const filteredDiffs = applyFilters(state.diffs, newFilters, state.reviewState);
+    const filteredDiffs = applyFilters(state.diffs, newFilters, state.reviewState, state.aiSuggestions);
     set({ filters: newFilters, filteredDiffs });
   },
 
   clearFilters: () => {
     const state = get();
-    const filteredDiffs = applyFilters(state.diffs, defaultFilters, state.reviewState);
+    const filteredDiffs = applyFilters(state.diffs, defaultFilters, state.reviewState, state.aiSuggestions);
     set({ filters: { ...defaultFilters }, filteredDiffs });
   },
 
@@ -170,8 +204,16 @@ export const useReviewStore = create<ReviewStore>((set, get) => ({
       },
     };
     saveState(newReviewState);
-    const filteredDiffs = applyFilters(state.diffs, state.filters, newReviewState);
+    const filteredDiffs = applyFilters(state.diffs, state.filters, newReviewState, state.aiSuggestions);
     set({ reviewState: newReviewState, filteredDiffs });
+  },
+
+  setAiSuggestions: (ai) => {
+    const state = get();
+    saveAiSuggestions(ai);
+    const filters = ai ? state.filters : { ...state.filters, aiVerdict: '' };
+    const filteredDiffs = applyFilters(state.diffs, filters, state.reviewState, ai);
+    set({ aiSuggestions: ai, filters, filteredDiffs });
   },
 
   toggleRejectedSection: () => set(s => ({ rejectedSectionOpen: !s.rejectedSectionOpen })),
@@ -208,6 +250,14 @@ export const useReviewStore = create<ReviewStore>((set, get) => ({
     }
     const emptyReviewState: ReviewState = { diffs: {} };
     saveState(emptyReviewState);
-    set({ diffs: [], filteredDiffs: [], modalIndex: null, reviewState: emptyReviewState });
+    saveAiSuggestions(null);
+    set({
+      diffs: [],
+      filteredDiffs: [],
+      modalIndex: null,
+      reviewState: emptyReviewState,
+      aiSuggestions: null,
+      filters: { ...get().filters, aiVerdict: '' },
+    });
   },
 }));

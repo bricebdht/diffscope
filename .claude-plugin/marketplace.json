@@ -1,0 +1,14 @@
+{
+  "name": "diffscope",
+  "description": "Claude Code plugins for Diffscope, the Playwright visual regression review app",
+  "owner": {
+    "name": "Brice Boudehent"
+  },
+  "plugins": [
+    {
+      "name": "diffscope",
+      "source": "./plugin",
+      "description": "Pre-review Playwright visual regression reports with Claude and import the suggestions into Diffscope"
+    }
+  ]
+}

@@ -14,8 +14,21 @@ Import a Playwright HTML report directly in your browser, review screenshot diff
 - **Review actions** — Approve (`A`), Needs Changes (`X`), Skip — auto-advances to the next diff
 - **Keyboard navigation** — `←` / `→` between diffs, `Esc` to close
 - **Filters** — by suite, viewport, status (Pending / Approved / Needs Changes), diffs-only toggle, text search
-- **Reviewed section** — reviewed items collapse into a separate section at the bottom
+- **Reviewed sections** — reviewed items move to separate Needs Changes and Approved sections at the bottom
+- **AI pre-review** — a Claude Code plugin reviews the diffs against your branch's code changes; import its suggestions to see a verdict and explanation on each diff (see below)
 - **Persistent state** — review decisions saved in localStorage across sessions
+
+## AI pre-review with Claude Code
+
+The `plugin/` folder is a Claude Code plugin that pre-reviews a report with Claude, using your Claude subscription (no API key):
+
+```shell
+/plugin marketplace add bricebdht/diffscope
+/plugin install diffscope@diffscope
+/diffscope:review
+```
+
+It downloads the Playwright report of your branch's latest GitHub Actions run (or takes a local report path), then opens a standalone HTML page with its conclusions, and writes `diffscope-suggestions.json` next to the report: import it with the **Claude review** button once the report is loaded to see the verdicts in Diffscope. See [plugin/README.md](plugin/README.md).
 
 ## Tech stack
 

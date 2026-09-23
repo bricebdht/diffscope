@@ -1,6 +1,6 @@
 import { useReviewStore } from '@/store/review-store';
 import { DiffCard } from './DiffCard';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
 import type { DiffEntry } from '@/lib/types';
 
 function SuiteGroup({ suite, items, onCardClick }: {
@@ -66,6 +66,7 @@ export function DiffGrid() {
     approvedSectionOpen,
     toggleRejectedSection,
     toggleApprovedSection,
+    aiSuggestions,
   } = useReviewStore();
 
   if (diffs.length === 0) return null;
@@ -98,6 +99,12 @@ export function DiffGrid() {
 
   return (
     <div className="p-4">
+      {aiSuggestions?.summary && (
+        <div className="mb-5 flex gap-2.5 rounded-lg border border-violet-900/60 bg-violet-950/20 px-4 py-3 text-sm leading-relaxed">
+          <Sparkles className="h-4 w-4 shrink-0 mt-0.5 text-violet-300" />
+          <p><span className="font-medium">Claude's summary:</span> {aiSuggestions.summary}</p>
+        </div>
+      )}
       {pending.length === 0 && reviewedCount > 0 ? (
         <div className="text-center py-10 pb-4">
           <h2 className="text-lg font-semibold text-green-500 mb-1">All caught up!</h2>

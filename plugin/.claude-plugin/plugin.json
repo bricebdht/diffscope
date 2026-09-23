@@ -1,0 +1,12 @@
+{
+  "name": "diffscope",
+  "displayName": "Diffscope",
+  "version": "0.1.0",
+  "description": "Pre-review Playwright visual regression reports with Claude and import the suggestions into Diffscope",
+  "author": {
+    "name": "Brice Boudehent"
+  },
+  "repository": "https://github.com/bricebdht/diffscope",
+  "license": "MIT",
+  "keywords": ["playwright", "visual-regression", "screenshots", "review"]
+}

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SliderView } from './SliderView';
 import { SideBySideView } from './SideBySideView';
+import { AiSuggestionPanel } from './AiSuggestionPanel';
 import {
   X,
   ChevronLeft,
@@ -28,6 +29,7 @@ export function ComparisonModal() {
     setReview,
     getStatus,
     getComment,
+    aiSuggestions,
   } = useReviewStore();
 
   const [comment, setComment] = useState('');
@@ -112,6 +114,7 @@ export function ComparisonModal() {
   if (!diff) return null;
 
   const status = getStatus(diff.id);
+  const suggestion = aiSuggestions?.byId[diff.id];
 
   return (
     <div
@@ -167,6 +170,8 @@ export function ComparisonModal() {
             </Button>
           </div>
         </div>
+
+        {suggestion && <AiSuggestionPanel suggestion={suggestion} />}
 
         {/* Comparison area */}
         <div className="flex-1 flex flex-col overflow-hidden min-h-0">
