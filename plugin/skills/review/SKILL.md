@@ -111,6 +111,6 @@ It writes `diffscope-review.html` next to the suggestions file: your summary, th
 
 Tell the user, briefly:
 
-- where the review page and the suggestions file are, and that they can import the suggestions in Diffscope with the **AI suggestions** button in the header once the report is loaded (when the report was downloaded from CI, give the report folder path too: that's the folder to drop into Diffscope);
+- where the review page and the suggestions file are, and that they can import the suggestions in Diffscope with the **Claude review** button in the header once the report is loaded (when the report was downloaded from CI, give the report folder path too: that's the folder to drop into Diffscope);
 - how many diffs you suggest approving, rejecting, and are unsure about;
 - the diffs that deserve a close look (regressions and low-confidence verdicts), one line each.

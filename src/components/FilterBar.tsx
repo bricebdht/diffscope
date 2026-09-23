@@ -70,7 +70,7 @@ export function FilterBar() {
 
       {aiSuggestions && (
         <>
-          <span className="text-xs text-muted-foreground">AI</span>
+          <span className="text-xs text-muted-foreground">Claude</span>
           <Select items={AI_FILTER_ITEMS} value={filters.aiVerdict} onValueChange={(v) => setFilter('aiVerdict', v ?? '')}>
             <SelectTrigger className="h-7 w-[130px] text-xs">
               <SelectValue placeholder="All" />

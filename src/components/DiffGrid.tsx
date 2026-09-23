@@ -100,8 +100,8 @@ export function DiffGrid() {
   return (
     <div className="p-4">
       {aiSuggestions?.summary && (
-        <div className="mb-5 flex gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs">
-          <Sparkles className="h-3.5 w-3.5 shrink-0 mt-0.5 text-muted-foreground" />
+        <div className="mb-5 flex gap-2.5 rounded-lg border border-violet-900/60 bg-violet-950/20 px-4 py-3 text-sm leading-relaxed">
+          <Sparkles className="h-4 w-4 shrink-0 mt-0.5 text-violet-300" />
           <p><span className="font-medium">Claude's summary:</span> {aiSuggestions.summary}</p>
         </div>
       )}

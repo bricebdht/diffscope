@@ -11,16 +11,25 @@ const STYLES: Record<AiVerdict, string> = {
 const ICONS = { approve: Check, reject: X, unsure: HelpCircle };
 
 /** Compact marker for Claude's suggested verdict. */
-export function AiVerdictBadge({ verdict, label, className }: {
+export function AiVerdictBadge({ verdict, label, size = 'sm', className }: {
   verdict: AiVerdict;
   label?: string;
+  size?: 'sm' | 'md';
   className?: string;
 }) {
   const Icon = ICONS[verdict];
+  const icon = size === 'md' ? 'h-3.5 w-3.5' : 'h-3 w-3';
   return (
-    <span className={cn('inline-flex items-center gap-0.5 rounded border px-1 py-0.5 text-[10px] font-medium', STYLES[verdict], className)}>
-      <Sparkles className="h-2.5 w-2.5" />
-      <Icon className="h-2.5 w-2.5" />
+    <span
+      className={cn(
+        'inline-flex items-center gap-1 rounded border font-medium',
+        size === 'md' ? 'px-1.5 py-0.5 text-sm' : 'px-1 py-0.5 text-xs',
+        STYLES[verdict],
+        className,
+      )}
+    >
+      <Sparkles className={icon} />
+      <Icon className={icon} />
       {label}
     </span>
   );

@@ -2,7 +2,7 @@ import { useReviewStore } from '@/store/review-store';
 import { Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { KeyboardShortcutsDialog } from './KeyboardShortcutsDialog';
-import { AiSuggestionsButton } from './AiSuggestionsButton';
+import { ClaudeReviewDialog } from './ClaudeReviewDialog';
 
 export function Header({ onImportClick }: { onImportClick: () => void }) {
   const { diffs, getStats } = useReviewStore();
@@ -27,7 +27,7 @@ export function Header({ onImportClick }: { onImportClick: () => void }) {
           </>
         )}
         <KeyboardShortcutsDialog />
-        <AiSuggestionsButton />
+        <ClaudeReviewDialog />
         <Button variant="outline" size="sm" onClick={onImportClick} className="gap-1.5 text-xs">
           <Upload className="h-3.5 w-3.5" />
           Import report
