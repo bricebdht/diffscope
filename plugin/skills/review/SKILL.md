@@ -2,7 +2,7 @@
 name: review
 description: Review the screenshot diffs of a Playwright visual regression report and write a Diffscope suggestions file (approve / reject verdict, category and explanation per diff), using the current branch's code changes as context. Use when the user wants help triaging a Playwright HTML report or its visual diffs.
 argument-hint: "[playwright-report folder | index.html | report.zip]"
-allowed-tools: Bash(node "${CLAUDE_SKILL_DIR}/scripts/extract-report.mjs" *)
+allowed-tools: Bash(node "${CLAUDE_SKILL_DIR}/scripts/extract-report.mjs" *) Bash(node "${CLAUDE_SKILL_DIR}/scripts/build-html-report.mjs" *)
 ---
 
 # Review a Playwright visual regression report
@@ -84,10 +84,20 @@ Write it to the `suggestionsPath` printed by the extractor, as UTF-8 JSON:
 - Include one entry per diff in the manifest, and copy `id` exactly: Diffscope uses it to attach the suggestion to the right diff.
 - `relatedFiles` and `group` are optional; `summary` and `details` must be plain text (no Markdown), in the user's language.
 
-## 6. Report back
+## 6. Build the review page
+
+Build a self-contained HTML page of your conclusions and open it in the browser:
+
+```bash
+node "${CLAUDE_SKILL_DIR}/scripts/build-html-report.mjs" "<manifest.json path>" --open
+```
+
+It writes `diffscope-review.html` next to the suggestions file: your summary, then every diff (needs changes and unsure first) with your verdict, explanation and the expected / actual / diff close-ups. The images are embedded, so the file can be shared as is.
+
+## 7. Report back
 
 Tell the user, briefly:
 
-- where the suggestions file is, and that they can import it in Diffscope with the **AI suggestions** button in the header once the report is loaded;
+- where the review page and the suggestions file are, and that they can import the suggestions in Diffscope with the **AI suggestions** button in the header once the report is loaded;
 - how many diffs you suggest approving, rejecting, and are unsure about;
 - the diffs that deserve a close look (regressions and low-confidence verdicts), one line each.

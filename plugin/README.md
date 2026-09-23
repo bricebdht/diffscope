@@ -25,7 +25,8 @@ Claude:
 
 1. extracts every diff with `scripts/extract-report.mjs` (expected, actual and diff images, plus close-ups of the changed regions);
 2. reads the branch's code changes (`git diff` against the PR base branch);
-3. reviews each diff and writes `diffscope-suggestions.json` next to the report.
+3. reviews each diff and writes `diffscope-suggestions.json` next to the report;
+4. builds `diffscope-review.html` next to it and opens it: a self-contained page with its summary and every diff (needs changes and unsure first), with its verdict, explanation and the expected / actual / diff close-ups. The images are embedded, so you can share the file as is.
 
 Then, in Diffscope, load the report as usual and click **AI suggestions** in the header to import the file. Each card gets Claude's verdict, the comparison view shows its explanation and the related files, and the **AI** filter lets you look at one verdict at a time. You still make every decision.
 

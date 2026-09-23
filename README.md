@@ -28,7 +28,7 @@ The `plugin/` folder is a Claude Code plugin that pre-reviews a report with Clau
 /diffscope:review playwright-report
 ```
 
-It writes `diffscope-suggestions.json` next to the report. Import it with the **AI suggestions** button once the report is loaded. See [plugin/README.md](plugin/README.md).
+It opens a standalone HTML page with its conclusions, and writes `diffscope-suggestions.json` next to the report: import it with the **AI suggestions** button once the report is loaded to see the verdicts in Diffscope. See [plugin/README.md](plugin/README.md).
 
 ## Tech stack
 

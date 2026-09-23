@@ -36,7 +36,7 @@ There is no automated test suite for the main app.
 
 **Keyboard shortcuts** live in `ComparisonModal`: A=Approve, X=Reject, ←/→=Navigate, Esc=Close.
 
-**AI suggestions:** `plugin/` is a Claude Code plugin (marketplace manifest in `.claude-plugin/`). Its `review` skill runs `plugin/skills/review/scripts/extract-report.mjs` (standalone Node, duplicates the report parsing) and writes a `diffscope-suggestions.json` that the app imports (`src/lib/suggestions.ts`, `AiSuggestionsButton`). Diff ids must be computed identically in `extract-report.mjs` and `report-parser.ts`.
+**AI suggestions:** `plugin/` is a Claude Code plugin (marketplace manifest in `.claude-plugin/`). Its `review` skill runs `plugin/skills/review/scripts/extract-report.mjs` (standalone Node, duplicates the report parsing) and writes a `diffscope-suggestions.json` that the app imports (`src/lib/suggestions.ts`, `AiSuggestionsButton`), then `build-html-report.mjs` renders a standalone review page from it. Diff ids must be computed identically in `extract-report.mjs` and `report-parser.ts`.
 
 **Image handling:** PNG files decompressed to blob URLs (no Canvas API). Blob URLs revoked on `clearReport()` to prevent memory leaks.
 
