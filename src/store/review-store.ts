@@ -40,7 +40,8 @@ interface ReviewStore {
   filters: Filters;
   modalIndex: number | null;
   compareMode: CompareMode;
-  reviewedSectionOpen: boolean;
+  rejectedSectionOpen: boolean;
+  approvedSectionOpen: boolean;
 
   // Computed
   filteredDiffs: DiffEntry[];
@@ -55,7 +56,8 @@ interface ReviewStore {
   navigate: (delta: number) => void;
   setCompareMode: (mode: CompareMode) => void;
   setReview: (id: string, status: ReviewStatus, comment?: string) => void;
-  toggleReviewedSection: () => void;
+  toggleRejectedSection: () => void;
+  toggleApprovedSection: () => void;
   getStatus: (id: string) => ReviewStatus;
   getComment: (id: string) => string;
   getStats: () => { total: number; pending: number; approved: number; changes: number };
@@ -96,7 +98,8 @@ export const useReviewStore = create<ReviewStore>((set, get) => ({
   filters: { ...defaultFilters },
   modalIndex: null,
   compareMode: 'sidebyside',
-  reviewedSectionOpen: false,
+  rejectedSectionOpen: true,
+  approvedSectionOpen: false,
   filteredDiffs: [],
   availableSuites: [],
 
@@ -152,7 +155,8 @@ export const useReviewStore = create<ReviewStore>((set, get) => ({
     set({ reviewState: newReviewState, filteredDiffs });
   },
 
-  toggleReviewedSection: () => set(s => ({ reviewedSectionOpen: !s.reviewedSectionOpen })),
+  toggleRejectedSection: () => set(s => ({ rejectedSectionOpen: !s.rejectedSectionOpen })),
+  toggleApprovedSection: () => set(s => ({ approvedSectionOpen: !s.approvedSectionOpen })),
 
   getStatus: (id) => {
     return get().reviewState.diffs[id]?.status || 'pending';
