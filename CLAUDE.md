@@ -17,6 +17,7 @@ Test fixture (in `test-fixture/`):
 - `npm run test:baseline` — capture baseline screenshots
 - `npm run test:diffs` — run with CSS changes to generate diffs
 - `npm run report` — full pipeline (baseline → diffs → zip)
+- `npm run demo` — rebuild the app's sample report in `public/demo/`
 
 There is no automated test suite for the main app.
 
@@ -37,6 +38,8 @@ There is no automated test suite for the main app.
 **Keyboard shortcuts** live in `ComparisonModal`: A=Approve, X=Reject, ←/→=Navigate, Esc=Close.
 
 **AI suggestions:** `plugin/` is a Claude Code plugin (marketplace manifest in `.claude-plugin/`). Its `review` skill downloads the branch's latest CI report with `fetch-ci-report.mjs` (via `gh`) unless given a local path, runs `plugin/skills/review/scripts/extract-report.mjs` (standalone Node, duplicates the report parsing) and writes a `diffscope-suggestions.json` that the app imports (`src/lib/suggestions.ts`, `ClaudeReviewDialog`), then `build-html-report.mjs` renders a standalone review page from it. Diff ids must be computed identically in `extract-report.mjs` and `report-parser.ts`.
+
+**Demo:** `public/demo/` holds a sample report (`playwright-report.zip`, rebuilt by `npm run demo` in `test-fixture/`) and its Claude review (`diffscope-suggestions.json`), loaded by the empty state's "Try with a sample report" button (`src/lib/demo.ts`). The review's ids depend on the dashboard tests' names and projects: renaming them requires regenerating it with `/diffscope:review`. The app is built with a relative `base` and deployed to GitHub Pages by `.github/workflows/deploy-pages.yml`.
 
 **Image handling:** PNG files decompressed to blob URLs (no Canvas API). Blob URLs revoked on `clearReport()` to prevent memory leaks.
 

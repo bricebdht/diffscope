@@ -1,0 +1,331 @@
+{
+  "format": "diffscope-suggestions",
+  "version": 1,
+  "generatedAt": "2026-09-23T20:35:50.155Z",
+  "generator": "claude-code",
+  "summary": "Most diffs match the injected CSS variants (borders, spacing, typography, chart heights, 2-column layout) and look fine on desktop. On phone, the typography and layout changes break things: the header title wraps and clips the nav, the orders table overflows, and the full page becomes wider than the viewport. Several phone snapshots also capture the wrong area of the page, so the tests themselves need a look.",
+  "suggestions": [
+    {
+      "id": "6abc3ed3",
+      "snapshot": "buttons-row",
+      "viewport": "desktop",
+      "verdict": "approve",
+      "category": "intended",
+      "confidence": "high",
+      "summary": "Button corners are less rounded (border-radius 4px).",
+      "details": "Matches the \"borders\" variant: .btn { border-radius: 4px }. Only the button corners change.",
+      "relatedFiles": [
+        "test-fixture/e2e/dashboard.spec.ts"
+      ],
+      "group": "Border radius and width"
+    },
+    {
+      "id": "19421241",
+      "snapshot": "buttons-row",
+      "viewport": "phone",
+      "verdict": "unsure",
+      "category": "unknown",
+      "confidence": "medium",
+      "summary": "The phone snapshot doesn't show the buttons row: it captures part of the orders table.",
+      "details": "Both expected and actual show the orders table instead of the buttons row, so the locator screenshot is capturing the wrong area on the phone project. The diff itself is a small vertical shift of that content. Worth fixing the test before trusting this snapshot.",
+      "relatedFiles": [
+        "test-fixture/e2e/dashboard.spec.ts"
+      ],
+      "group": "Phone snapshots capture the wrong area"
+    },
+    {
+      "id": "6391ffc7",
+      "snapshot": "chart-bars",
+      "viewport": "desktop",
+      "verdict": "approve",
+      "category": "intended",
+      "confidence": "high",
+      "summary": "Bar heights changed to the new chart values.",
+      "details": "Matches the \"chart\" variant, which sets new heights for each .chart-bar. Layout and colors are unchanged.",
+      "relatedFiles": [
+        "test-fixture/e2e/dashboard.spec.ts"
+      ],
+      "group": "Chart bar heights"
+    },
+    {
+      "id": "6c27f122",
+      "snapshot": "chart-bars",
+      "viewport": "phone",
+      "verdict": "approve",
+      "category": "intended",
+      "confidence": "high",
+      "summary": "Bar heights changed to the new chart values.",
+      "details": "Same \"chart\" variant as on desktop: every bar is taller, nothing else moves.",
+      "relatedFiles": [
+        "test-fixture/e2e/dashboard.spec.ts"
+      ],
+      "group": "Chart bar heights"
+    },
+    {
+      "id": "1a8c34a5",
+      "snapshot": "chart-weekly",
+      "viewport": "desktop",
+      "verdict": "approve",
+      "category": "intended",
+      "confidence": "high",
+      "summary": "Weekly chart bars have new heights.",
+      "details": "The chart card shows the same \"chart\" variant heights; title and axis labels are unchanged.",
+      "relatedFiles": [
+        "test-fixture/e2e/dashboard.spec.ts"
+      ],
+      "group": "Chart bar heights"
+    },
+    {
+      "id": "30e53f84",
+      "snapshot": "chart-weekly",
+      "viewport": "phone",
+      "verdict": "approve",
+      "category": "intended",
+      "confidence": "medium",
+      "summary": "Weekly chart bars have new heights.",
+      "details": "Same \"chart\" variant as on desktop. Not checked in detail on phone.",
+      "relatedFiles": [
+        "test-fixture/e2e/dashboard.spec.ts"
+      ],
+      "group": "Chart bar heights"
+    },
+    {
+      "id": "0e3d1fd3",
+      "snapshot": "dashboard-layout",
+      "viewport": "desktop",
+      "verdict": "approve",
+      "category": "intended",
+      "confidence": "high",
+      "summary": "Stats and feature cards switch to a 2-column grid, chart is taller.",
+      "details": "Matches the \"layout\" variant (2-column .stats and .cards-grid, 200px chart). The third feature card sits alone on its row, which is expected with 2 columns.",
+      "relatedFiles": [
+        "test-fixture/e2e/dashboard.spec.ts"
+      ],
+      "group": "Two-column layout"
+    },
+    {
+      "id": "68c5f864",
+      "snapshot": "dashboard-layout",
+      "viewport": "phone",
+      "verdict": "reject",
+      "category": "regression",
+      "confidence": "high",
+      "summary": "The page is now wider than the phone viewport (585px vs 412px).",
+      "details": "The forced 2-column grids from the \"layout\" variant don't fit on phone: the full-page screenshot grew to 585px wide, which means horizontal scrolling, and the stat cards are cramped. The 2-column rule probably needs a mobile breakpoint.",
+      "relatedFiles": [
+        "test-fixture/e2e/dashboard.spec.ts"
+      ],
+      "group": "Two-column layout"
+    },
+    {
+      "id": "524b5bc2",
+      "snapshot": "feature-analytics",
+      "viewport": "desktop",
+      "verdict": "approve",
+      "category": "intended",
+      "confidence": "medium",
+      "summary": "Feature card has smaller corner radius and a 2px border.",
+      "details": "Matches the \"borders\" variant on .feature-card.",
+      "relatedFiles": [
+        "test-fixture/e2e/dashboard.spec.ts"
+      ],
+      "group": "Border radius and width"
+    },
+    {
+      "id": "26ab7760",
+      "snapshot": "feature-analytics",
+      "viewport": "phone",
+      "verdict": "unsure",
+      "category": "unknown",
+      "confidence": "medium",
+      "summary": "The phone snapshot doesn't show the analytics feature card: it captures part of the orders table.",
+      "details": "Both expected and actual show the orders table instead of the analytics feature card, so the locator screenshot is capturing the wrong area on the phone project. The diff itself is a small vertical shift of that content. Worth fixing the test before trusting this snapshot.",
+      "relatedFiles": [
+        "test-fixture/e2e/dashboard.spec.ts"
+      ],
+      "group": "Phone snapshots capture the wrong area"
+    },
+    {
+      "id": "450300b9",
+      "snapshot": "features-grid",
+      "viewport": "desktop",
+      "verdict": "approve",
+      "category": "intended",
+      "confidence": "high",
+      "summary": "Feature cards have more padding.",
+      "details": "Matches the \"spacing\" variant: .feature-card { padding: 24px }. Cards are slightly taller, content is unchanged.",
+      "relatedFiles": [
+        "test-fixture/e2e/dashboard.spec.ts"
+      ],
+      "group": "Spacing increase"
+    },
+    {
+      "id": "313edfdf",
+      "snapshot": "features-grid",
+      "viewport": "phone",
+      "verdict": "unsure",
+      "category": "unknown",
+      "confidence": "medium",
+      "summary": "The phone snapshot doesn't show the feature cards grid: it captures part of the orders table.",
+      "details": "Both expected and actual show the orders table instead of the feature cards grid, so the locator screenshot is capturing the wrong area on the phone project. The diff itself is a small vertical shift of that content. Worth fixing the test before trusting this snapshot.",
+      "relatedFiles": [
+        "test-fixture/e2e/dashboard.spec.ts"
+      ],
+      "group": "Phone snapshots capture the wrong area"
+    },
+    {
+      "id": "246ac248",
+      "snapshot": "footer",
+      "viewport": "phone",
+      "verdict": "unsure",
+      "category": "unknown",
+      "confidence": "medium",
+      "summary": "The footer snapshot shows different content than the baseline.",
+      "details": "Expected shows the \"Reset Filters\" button, actual shows the last row of the orders table: neither is the footer. The phone locator is capturing the wrong area, and that area moved.",
+      "relatedFiles": [
+        "test-fixture/e2e/dashboard.spec.ts"
+      ],
+      "group": "Phone snapshots capture the wrong area"
+    },
+    {
+      "id": "3fa63b9d",
+      "snapshot": "header",
+      "viewport": "desktop",
+      "verdict": "approve",
+      "category": "intended",
+      "confidence": "high",
+      "summary": "Dashboard title is larger with extra letter spacing.",
+      "details": "Matches the \"typography\" variant: .header h1 { font-size: 18px; letter-spacing: 0.5px }.",
+      "relatedFiles": [
+        "test-fixture/e2e/dashboard.spec.ts"
+      ],
+      "group": "Typography update"
+    },
+    {
+      "id": "3332f873",
+      "snapshot": "header",
+      "viewport": "phone",
+      "verdict": "reject",
+      "category": "regression",
+      "confidence": "high",
+      "summary": "The larger title wraps under the logo and the \"Settings\" link is cut off.",
+      "details": "The \"typography\" variant makes the header title bigger; on phone it no longer fits next to the logo, pushes the header taller, and the last nav link is clipped at the right edge.",
+      "relatedFiles": [
+        "test-fixture/e2e/dashboard.spec.ts"
+      ],
+      "group": "Typography update"
+    },
+    {
+      "id": "61180fe4",
+      "snapshot": "stat-revenue",
+      "viewport": "desktop",
+      "verdict": "approve",
+      "category": "intended",
+      "confidence": "medium",
+      "summary": "Bigger value, uppercase label with letter spacing.",
+      "details": "Matches the \"typography\" variant on .stat-card .value and .label.",
+      "relatedFiles": [
+        "test-fixture/e2e/dashboard.spec.ts"
+      ],
+      "group": "Typography update"
+    },
+    {
+      "id": "0e5faccd",
+      "snapshot": "stat-revenue",
+      "viewport": "phone",
+      "verdict": "approve",
+      "category": "intended",
+      "confidence": "medium",
+      "summary": "Bigger value, uppercase label; the trend line wraps on two lines.",
+      "details": "Matches the \"typography\" variant. The trend text wrapping is acceptable in this card width.",
+      "relatedFiles": [
+        "test-fixture/e2e/dashboard.spec.ts"
+      ],
+      "group": "Typography update"
+    },
+    {
+      "id": "0106d828",
+      "snapshot": "stat-users",
+      "viewport": "desktop",
+      "verdict": "approve",
+      "category": "intended",
+      "confidence": "medium",
+      "summary": "Card corners less rounded, border is 2px.",
+      "details": "Matches the \"borders\" variant on .stat-card.",
+      "relatedFiles": [
+        "test-fixture/e2e/dashboard.spec.ts"
+      ],
+      "group": "Border radius and width"
+    },
+    {
+      "id": "62eb503e",
+      "snapshot": "stat-users",
+      "viewport": "phone",
+      "verdict": "approve",
+      "category": "intended",
+      "confidence": "medium",
+      "summary": "Card corners less rounded, border is 2px.",
+      "details": "Matches the \"borders\" variant on .stat-card.",
+      "relatedFiles": [
+        "test-fixture/e2e/dashboard.spec.ts"
+      ],
+      "group": "Border radius and width"
+    },
+    {
+      "id": "42957ff7",
+      "snapshot": "stats-row",
+      "viewport": "desktop",
+      "verdict": "approve",
+      "category": "intended",
+      "confidence": "medium",
+      "summary": "Stat cards have more padding and a larger gap.",
+      "details": "Matches the \"spacing\" variant (.stat-card padding, .stats gap).",
+      "relatedFiles": [
+        "test-fixture/e2e/dashboard.spec.ts"
+      ],
+      "group": "Spacing increase"
+    },
+    {
+      "id": "7f86dd99",
+      "snapshot": "stats-row",
+      "viewport": "phone",
+      "verdict": "unsure",
+      "category": "regression",
+      "confidence": "low",
+      "summary": "Stat cards overflow the row: the third card is cut off.",
+      "details": "The larger gap and padding from the \"spacing\" variant push the third card past the right edge. Check whether the row already scrolled horizontally before this change.",
+      "relatedFiles": [
+        "test-fixture/e2e/dashboard.spec.ts"
+      ],
+      "group": "Spacing increase"
+    },
+    {
+      "id": "5993fee1",
+      "snapshot": "table-orders",
+      "viewport": "desktop",
+      "verdict": "approve",
+      "category": "intended",
+      "confidence": "high",
+      "summary": "Table headers are uppercase with letter spacing.",
+      "details": "Matches the \"typography\" variant on th. Rows are unchanged.",
+      "relatedFiles": [
+        "test-fixture/e2e/dashboard.spec.ts"
+      ],
+      "group": "Typography update"
+    },
+    {
+      "id": "4bdd8e44",
+      "snapshot": "table-orders",
+      "viewport": "phone",
+      "verdict": "reject",
+      "category": "regression",
+      "confidence": "medium",
+      "summary": "Uppercase headers wrap and the Status column is cut off.",
+      "details": "With the \"typography\" variant, \"ORDER ID\" wraps on two lines and the Status badges are clipped at the right edge on phone.",
+      "relatedFiles": [
+        "test-fixture/e2e/dashboard.spec.ts"
+      ],
+      "group": "Typography update"
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { useReviewStore } from '@/store/review-store';
-import { parsePlaywrightFolder, parsePlaywrightZip, computePixelCount } from '@/lib/report-parser';
+import { parsePlaywrightFolder, parsePlaywrightZip, withPixelCounts } from '@/lib/report-parser';
 import type { DiffEntry } from '@/lib/types';
 import { Upload, FolderOpen, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -22,29 +22,10 @@ export function ImportDialog({ open, onClose }: ImportDialogProps) {
   const { setDiffs, clearReport } = useReviewStore();
 
   const finalize = useCallback(async (diffs: DiffEntry[]) => {
-    const CONCURRENCY = 4;
-    let done = 0;
-    const withCounts: DiffEntry[] = [...diffs];
-
-    setProgress(`Computing pixel counts… 0/${diffs.length}`);
-    setProgressPct(0);
-
-    // Process diffs with limited concurrency to avoid freezing the UI
-    const queue = diffs.map((d, i) => async () => {
-      const pixelCount = await computePixelCount(d);
-      withCounts[i] = { ...d, pixelCount };
-      done++;
-      setProgress(`Computing pixel counts… ${done}/${diffs.length}`);
-      setProgressPct(Math.round((done / diffs.length) * 100));
+    const withCounts = await withPixelCounts(diffs, (done, total) => {
+      setProgress(`Computing pixel counts… ${done}/${total}`);
+      setProgressPct(total ? Math.round((done / total) * 100) : 0);
     });
-
-    const executing = new Set<Promise<void>>();
-    for (const task of queue) {
-      const p = task().then(() => { executing.delete(p); });
-      executing.add(p);
-      if (executing.size >= CONCURRENCY) await Promise.race(executing);
-    }
-    await Promise.all(executing);
 
     setDiffs(withCounts);
     onClose();

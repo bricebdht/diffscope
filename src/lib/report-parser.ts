@@ -311,3 +311,34 @@ export async function computePixelCount(diff: DiffEntry): Promise<number | null>
     return null;
   }
 }
+
+/**
+ * Fill in the changed pixel count of every diff, a few at a time so the UI
+ * stays responsive. Returns new entries in the same order.
+ */
+export async function withPixelCounts(
+  diffs: DiffEntry[],
+  onProgress?: (done: number, total: number) => void,
+): Promise<DiffEntry[]> {
+  const CONCURRENCY = 4;
+  let done = 0;
+  const withCounts: DiffEntry[] = [...diffs];
+  onProgress?.(0, diffs.length);
+
+  const queue = diffs.map((d, i) => async () => {
+    const pixelCount = await computePixelCount(d);
+    withCounts[i] = { ...d, pixelCount };
+    done++;
+    onProgress?.(done, diffs.length);
+  });
+
+  const executing = new Set<Promise<void>>();
+  for (const task of queue) {
+    const p = task().then(() => { executing.delete(p); });
+    executing.add(p);
+    if (executing.size >= CONCURRENCY) await Promise.race(executing);
+  }
+  await Promise.all(executing);
+
+  return withCounts;
+}
