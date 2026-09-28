@@ -34,7 +34,7 @@ It uses the GitHub CLI (`gh`), looks through the branch's recent completed runs 
 node "${CLAUDE_SKILL_DIR}/scripts/extract-report.mjs" "<report path>"
 ```
 
-It prints a JSON summary with the path of `manifest.json`, the path where the suggestions file must be written (`suggestionsPath`), and the list of diffs. Read `manifest.json`: for each diff it gives the snapshot name, spec file, test title, viewport, image sizes, the number of changed pixels, and the paths of the images:
+It prints a JSON summary with the path of `manifest.json`, the path where the suggestions file must be written (`suggestionsPath`), and the list of diffs. Read `manifest.json`: for each diff it gives the snapshot name, spec file, test title, Playwright project, image sizes, the number of changed pixels, and the paths of the images:
 
 - `images.expected`, `images.actual`, `images.diff`: full screenshots. In the diff image, changed pixels are red (anti-aliasing differences are yellow) over a faded copy of the page.
 - `regions[]`: bounding boxes of the changed areas, each with cropped close-ups (`images.expected`, `images.actual`, `images.diff`). Full screenshots get downscaled when you read them, so rely on the close-ups to see small changes.
@@ -81,7 +81,7 @@ Write it to the `suggestionsPath` printed by the extractor, as UTF-8 JSON:
     {
       "id": "<id from the manifest, unchanged>",
       "snapshot": "<snapshot from the manifest>",
-      "viewport": "desktop",
+      "project": "chromium",
       "verdict": "approve",
       "category": "intended",
       "confidence": "high",

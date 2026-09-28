@@ -152,10 +152,12 @@ export function ComparisonModal() {
           <span className="text-sm font-semibold flex-1 min-w-0 truncate">{diff.description}</span>
           <div className="flex gap-1">
             <Badge variant="secondary" className="text-[10px]">{diff.suite}</Badge>
-            <Badge variant="secondary" className="text-[10px]">
-              {diff.viewport === 'phone' ? <Smartphone className="h-3 w-3 mr-0.5" /> : <Monitor className="h-3 w-3 mr-0.5" />}
-              {diff.viewport === 'phone' ? 'Mobile' : 'Desktop'}
-            </Badge>
+            {diff.project && (
+              <Badge variant="secondary" className="text-[10px]">
+                {diff.mobile ? <Smartphone className="h-3 w-3 mr-0.5" /> : <Monitor className="h-3 w-3 mr-0.5" />}
+                {diff.project}
+              </Badge>
+            )}
             {diff.pixelCount != null && (
               <Badge variant="destructive" className="text-[10px]">{diff.pixelCount.toLocaleString()} px</Badge>
             )}

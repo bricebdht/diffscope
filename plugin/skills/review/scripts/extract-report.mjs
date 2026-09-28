@@ -333,7 +333,6 @@ function main() {
     const suite = specFile.replace(/\.spec\.\w+$/, '') || 'unknown';
 
     for (const test of file.tests || []) {
-      const viewport = test.projectName === 'phone' ? 'phone' : 'desktop';
       for (const result of test.results || []) {
         const attachments = result.attachments || [];
         // A test can fail several screenshot assertions (expect.soft): one diff each.
@@ -381,7 +380,6 @@ function main() {
             specFile,
             testTitle: test.title ?? null,
             projectName: test.projectName ?? null,
-            viewport,
             size: decoded.diff ? { width: decoded.diff.width, height: decoded.diff.height } : null,
             expectedSize: decoded.expected ? { width: decoded.expected.width, height: decoded.expected.height } : null,
             actualSize: decoded.actual ? { width: decoded.actual.width, height: decoded.actual.height } : null,
@@ -395,7 +393,7 @@ function main() {
   }
 
   const diffs = [...byId.values()].sort((a, b) =>
-    a.suite.localeCompare(b.suite) || a.snapshot.localeCompare(b.snapshot) || a.viewport.localeCompare(b.viewport));
+    a.suite.localeCompare(b.suite) || a.snapshot.localeCompare(b.snapshot) || (a.projectName ?? '').localeCompare(b.projectName ?? ''));
 
   // Suggestions go next to the report so they're easy to find and drop into Diffscope.
   const reportDir = fs.statSync(input).isDirectory() ? input : path.dirname(input);
@@ -409,7 +407,7 @@ function main() {
     suggestionsPath,
     diffCount: diffs.length,
     diffs: diffs.map(d => ({
-      id: d.id, snapshot: d.snapshot, viewport: d.viewport, changedPixels: d.changedPixels, regions: d.regions.length,
+      id: d.id, snapshot: d.snapshot, projectName: d.projectName, changedPixels: d.changedPixels, regions: d.regions.length,
     })),
   }, null, 2));
 }
