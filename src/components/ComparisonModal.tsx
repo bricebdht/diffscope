@@ -32,15 +32,11 @@ export function ComparisonModal() {
     aiSuggestions,
   } = useReviewStore();
 
-  const [comment, setComment] = useState('');
   const diff = modalIndex !== null ? filteredDiffs[modalIndex] : null;
 
-  // Sync comment with store when diff changes
-  useEffect(() => {
-    if (diff) {
-      setComment(getComment(diff.id));
-    }
-  }, [diff?.id, diff, getComment]);
+  // The comment being typed, tied to its diff: moving to another diff shows that diff's saved comment.
+  const [draft, setDraft] = useState<{ id: string; text: string } | null>(null);
+  const comment = diff ? (draft?.id === diff.id ? draft.text : getComment(diff.id)) : '';
 
   const handleReview = useCallback((status: 'approved' | 'changes') => {
     if (!diff) return;
@@ -210,9 +206,9 @@ export function ComparisonModal() {
           {/* View */}
           <div className="flex-1 flex flex-col overflow-hidden min-h-0">
             {compareMode === 'slider' && diff.expectedBlob ? (
-              <SliderView diff={diff} />
+              <SliderView key={diff.id} diff={diff} />
             ) : (
-              <SideBySideView diff={diff} />
+              <SideBySideView key={diff.id} diff={diff} />
             )}
           </div>
         </div>
@@ -261,7 +257,7 @@ export function ComparisonModal() {
             placeholder="Comment (optional)..."
             className="flex-1 min-w-[150px] h-7 text-xs"
             value={comment}
-            onChange={(e) => setComment(e.target.value)}
+            onChange={(e) => setDraft({ id: diff.id, text: e.target.value })}
           />
           <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
             <kbd className="px-1 py-0.5 border border-border rounded text-[10px]">A</kbd> approve
