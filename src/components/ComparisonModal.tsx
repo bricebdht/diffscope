@@ -115,6 +115,7 @@ export function ComparisonModal() {
 
   const status = getStatus(diff.id);
   const suggestion = aiSuggestions?.byId[diff.id];
+  const remaining = filteredDiffs.filter(d => getStatus(d.id) === 'pending').length;
 
   return (
     <div
@@ -159,6 +160,9 @@ export function ComparisonModal() {
               <Badge variant="destructive" className="text-[10px]">{diff.pixelCount.toLocaleString()} px</Badge>
             )}
           </div>
+          <span className="text-xs text-muted-foreground tabular-nums whitespace-nowrap">
+            {remaining === 0 ? 'All reviewed' : `${remaining} left to review`}
+          </span>
           <div className="flex gap-1">
             <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => navigate(-1)}>
               <ChevronLeft className="h-3.5 w-3.5 mr-0.5" />
