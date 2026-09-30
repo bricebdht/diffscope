@@ -24,11 +24,6 @@ export function SliderView({ diff }: SliderViewProps) {
     setImgSize({ w, h });
   }, []);
 
-  useEffect(() => {
-    setPct(50);
-    setImgSize(null);
-  }, [diff.id]);
-
   const handleMove = useCallback((clientX: number) => {
     const actual = actualRef.current;
     if (!actual) return;

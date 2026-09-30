@@ -1,4 +1,4 @@
-import { useRef, useCallback, useEffect } from 'react';
+import { useRef, useCallback } from 'react';
 import type { DiffEntry } from '@/lib/types';
 
 interface SideBySideViewProps {
@@ -22,13 +22,6 @@ export function SideBySideView({ diff }: SideBySideViewProps) {
     }
     syncing.current = false;
   }, []);
-
-  useEffect(() => {
-    // Reset scroll positions when diff changes
-    for (const panel of panelRefs.current) {
-      if (panel) panel.scrollTop = 0;
-    }
-  }, [diff.id]);
 
   const setRef = (idx: number) => (el: HTMLDivElement | null) => {
     panelRefs.current[idx] = el;
