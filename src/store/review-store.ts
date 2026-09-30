@@ -160,10 +160,17 @@ export const useReviewStore = create<ReviewStore>((set, get) => ({
 
   setDiffs: (diffs) => {
     const state = get();
-    const filteredDiffs = applyFilters(diffs, state.filters, state.reviewState, state.aiSuggestions);
     const availableSuites = [...new Set(diffs.map(d => d.suite))].sort();
     const availableProjects = [...new Set(diffs.map(d => d.project).filter(Boolean))].sort();
-    set({ diffs, filteredDiffs, availableSuites, availableProjects });
+    // Drop suite/project filters the new report doesn't have: their selector may be hidden,
+    // leaving an empty grid with no visible reason.
+    const filters = {
+      ...state.filters,
+      suite: availableSuites.includes(state.filters.suite) ? state.filters.suite : '',
+      project: availableProjects.includes(state.filters.project) ? state.filters.project : '',
+    };
+    const filteredDiffs = applyFilters(diffs, filters, state.reviewState, state.aiSuggestions);
+    set({ diffs, filters, filteredDiffs, availableSuites, availableProjects });
   },
 
   setFilter: (key, value) => {
