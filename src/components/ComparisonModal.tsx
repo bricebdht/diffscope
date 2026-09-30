@@ -35,8 +35,10 @@ export function ComparisonModal() {
   const diff = modalIndex !== null ? filteredDiffs[modalIndex] : null;
 
   // The comment being typed, tied to its diff: moving to another diff shows that diff's saved comment.
-  const [draft, setDraft] = useState<{ id: string; text: string } | null>(null);
-  const comment = diff ? (draft?.id === diff.id ? draft.text : getComment(diff.id)) : '';
+  // Keyed on the entry itself, not its id: ids are stable across reports, so a replaced report
+  // must not inherit the draft.
+  const [draft, setDraft] = useState<{ diff: DiffEntry; text: string } | null>(null);
+  const comment = diff ? (draft?.diff === diff ? draft.text : getComment(diff.id)) : '';
 
   const handleReview = useCallback((status: 'approved' | 'changes') => {
     if (!diff) return;
@@ -257,7 +259,7 @@ export function ComparisonModal() {
             placeholder="Comment (optional)..."
             className="flex-1 min-w-[150px] h-7 text-xs"
             value={comment}
-            onChange={(e) => setDraft({ id: diff.id, text: e.target.value })}
+            onChange={(e) => setDraft({ diff, text: e.target.value })}
           />
           <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
             <kbd className="px-1 py-0.5 border border-border rounded text-[10px]">A</kbd> approve
