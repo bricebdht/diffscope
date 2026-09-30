@@ -19,7 +19,7 @@ const AI_FILTER_ITEMS: Record<string, string> = {
 };
 
 export function FilterBar() {
-  const { filters, setFilter, clearFilters, getStats, diffs, availableSuites, aiSuggestions } = useReviewStore();
+  const { filters, setFilter, clearFilters, getStats, diffs, availableSuites, availableProjects, aiSuggestions } = useReviewStore();
   const stats = getStats();
 
   if (diffs.length === 0) return null;
@@ -43,17 +43,22 @@ export function FilterBar() {
         </>
       )}
 
-      <span className="text-xs text-muted-foreground">Viewport</span>
-      <Select value={filters.viewport} onValueChange={(v) => setFilter('viewport', v ?? '')}>
-        <SelectTrigger className="h-7 w-[100px] text-xs">
-          <SelectValue placeholder="All" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="">All</SelectItem>
-          <SelectItem value="desktop">Desktop</SelectItem>
-          <SelectItem value="phone">Mobile</SelectItem>
-        </SelectContent>
-      </Select>
+      {availableProjects.length > 1 && (
+        <>
+          <span className="text-xs text-muted-foreground">Project</span>
+          <Select value={filters.project} onValueChange={(v) => setFilter('project', v ?? '')}>
+            <SelectTrigger className="h-7 w-[130px] text-xs">
+              <SelectValue placeholder="All" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All</SelectItem>
+              {availableProjects.map(p => (
+                <SelectItem key={p} value={p}>{p}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </>
+      )}
 
       <span className="text-xs text-muted-foreground">Status</span>
       <Select value={filters.status} onValueChange={(v) => setFilter('status', v ?? '')}>

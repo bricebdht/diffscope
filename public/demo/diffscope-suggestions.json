@@ -8,7 +8,7 @@
     {
       "id": "6abc3ed3",
       "snapshot": "buttons-row",
-      "viewport": "desktop",
+      "project": "desktop",
       "verdict": "approve",
       "category": "intended",
       "confidence": "high",
@@ -22,7 +22,7 @@
     {
       "id": "19421241",
       "snapshot": "buttons-row",
-      "viewport": "phone",
+      "project": "phone",
       "verdict": "unsure",
       "category": "unknown",
       "confidence": "medium",
@@ -36,7 +36,7 @@
     {
       "id": "6391ffc7",
       "snapshot": "chart-bars",
-      "viewport": "desktop",
+      "project": "desktop",
       "verdict": "approve",
       "category": "intended",
       "confidence": "high",
@@ -50,7 +50,7 @@
     {
       "id": "6c27f122",
       "snapshot": "chart-bars",
-      "viewport": "phone",
+      "project": "phone",
       "verdict": "approve",
       "category": "intended",
       "confidence": "high",
@@ -64,7 +64,7 @@
     {
       "id": "1a8c34a5",
       "snapshot": "chart-weekly",
-      "viewport": "desktop",
+      "project": "desktop",
       "verdict": "approve",
       "category": "intended",
       "confidence": "high",
@@ -78,7 +78,7 @@
     {
       "id": "30e53f84",
       "snapshot": "chart-weekly",
-      "viewport": "phone",
+      "project": "phone",
       "verdict": "approve",
       "category": "intended",
       "confidence": "medium",
@@ -92,7 +92,7 @@
     {
       "id": "0e3d1fd3",
       "snapshot": "dashboard-layout",
-      "viewport": "desktop",
+      "project": "desktop",
       "verdict": "approve",
       "category": "intended",
       "confidence": "high",
@@ -106,7 +106,7 @@
     {
       "id": "68c5f864",
       "snapshot": "dashboard-layout",
-      "viewport": "phone",
+      "project": "phone",
       "verdict": "reject",
       "category": "regression",
       "confidence": "high",
@@ -120,7 +120,7 @@
     {
       "id": "524b5bc2",
       "snapshot": "feature-analytics",
-      "viewport": "desktop",
+      "project": "desktop",
       "verdict": "approve",
       "category": "intended",
       "confidence": "medium",
@@ -134,7 +134,7 @@
     {
       "id": "26ab7760",
       "snapshot": "feature-analytics",
-      "viewport": "phone",
+      "project": "phone",
       "verdict": "unsure",
       "category": "unknown",
       "confidence": "medium",
@@ -148,7 +148,7 @@
     {
       "id": "450300b9",
       "snapshot": "features-grid",
-      "viewport": "desktop",
+      "project": "desktop",
       "verdict": "approve",
       "category": "intended",
       "confidence": "high",
@@ -162,7 +162,7 @@
     {
       "id": "313edfdf",
       "snapshot": "features-grid",
-      "viewport": "phone",
+      "project": "phone",
       "verdict": "unsure",
       "category": "unknown",
       "confidence": "medium",
@@ -176,7 +176,7 @@
     {
       "id": "246ac248",
       "snapshot": "footer",
-      "viewport": "phone",
+      "project": "phone",
       "verdict": "unsure",
       "category": "unknown",
       "confidence": "medium",
@@ -190,7 +190,7 @@
     {
       "id": "3fa63b9d",
       "snapshot": "header",
-      "viewport": "desktop",
+      "project": "desktop",
       "verdict": "approve",
       "category": "intended",
       "confidence": "high",
@@ -204,7 +204,7 @@
     {
       "id": "3332f873",
       "snapshot": "header",
-      "viewport": "phone",
+      "project": "phone",
       "verdict": "reject",
       "category": "regression",
       "confidence": "high",
@@ -218,7 +218,7 @@
     {
       "id": "61180fe4",
       "snapshot": "stat-revenue",
-      "viewport": "desktop",
+      "project": "desktop",
       "verdict": "approve",
       "category": "intended",
       "confidence": "medium",
@@ -232,7 +232,7 @@
     {
       "id": "0e5faccd",
       "snapshot": "stat-revenue",
-      "viewport": "phone",
+      "project": "phone",
       "verdict": "approve",
       "category": "intended",
       "confidence": "medium",
@@ -246,7 +246,7 @@
     {
       "id": "0106d828",
       "snapshot": "stat-users",
-      "viewport": "desktop",
+      "project": "desktop",
       "verdict": "approve",
       "category": "intended",
       "confidence": "medium",
@@ -260,7 +260,7 @@
     {
       "id": "62eb503e",
       "snapshot": "stat-users",
-      "viewport": "phone",
+      "project": "phone",
       "verdict": "approve",
       "category": "intended",
       "confidence": "medium",
@@ -274,7 +274,7 @@
     {
       "id": "42957ff7",
       "snapshot": "stats-row",
-      "viewport": "desktop",
+      "project": "desktop",
       "verdict": "approve",
       "category": "intended",
       "confidence": "medium",
@@ -288,7 +288,7 @@
     {
       "id": "7f86dd99",
       "snapshot": "stats-row",
-      "viewport": "phone",
+      "project": "phone",
       "verdict": "unsure",
       "category": "regression",
       "confidence": "low",
@@ -302,7 +302,7 @@
     {
       "id": "5993fee1",
       "snapshot": "table-orders",
-      "viewport": "desktop",
+      "project": "desktop",
       "verdict": "approve",
       "category": "intended",
       "confidence": "high",
@@ -316,7 +316,7 @@
     {
       "id": "4bdd8e44",
       "snapshot": "table-orders",
-      "viewport": "phone",
+      "project": "phone",
       "verdict": "reject",
       "category": "regression",
       "confidence": "medium",

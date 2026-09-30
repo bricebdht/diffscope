@@ -57,7 +57,7 @@ function diffCard(diff, s) {
     <header>
       <span class="verdict">${esc(VERDICTS[verdict].label)}</span>
       <h3>${esc(diff.snapshot)}</h3>
-      <span class="chip">${esc(diff.viewport)}</span>
+      ${diff.projectName ? `<span class="chip">${esc(diff.projectName)}</span>` : ''}
       ${diff.suite ? `<span class="chip">${esc(diff.suite)}</span>` : ''}
       ${s?.group ? `<span class="chip group">${esc(s.group)}</span>` : ''}
     </header>

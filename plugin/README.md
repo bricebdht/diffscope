@@ -51,7 +51,7 @@ Then, in Diffscope, load the report as usual and click **Claude review** in the 
     {
       "id": "0d190ac6",
       "snapshot": "buttons-row",
-      "viewport": "desktop",
+      "project": "chromium",
       "verdict": "approve | reject | unsure",
       "category": "intended | regression | noise | unknown",
       "confidence": "high | medium | low",
@@ -64,4 +64,4 @@ Then, in Diffscope, load the report as usual and click **Claude review** in the 
 }
 ```
 
-`id` is computed the same way as in Diffscope (`src/lib/report-parser.ts`), from the snapshot name and viewport. Keep the two in sync if either changes.
+`id` is computed the same way as in Diffscope (`src/lib/report-parser.ts`), from the test (Playwright's `testId`) and the snapshot name. Keep the two in sync if either changes.

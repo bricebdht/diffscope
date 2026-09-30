@@ -13,11 +13,11 @@ Playwright's HTML report shows failing screenshots one test at a time. Diffscope
 ## Features
 
 - **Import** a Playwright report folder or `.zip` archive by drag & drop — parsed client-side
-- **Thumbnail grid** of all screenshot diffs, grouped by test suite, with changed pixel count and viewport
+- **Thumbnail grid** of all screenshot diffs, grouped by test suite, with changed pixel count and Playwright project
 - **Comparison view**: *3-Panel* (Expected | Actual | Diff with synchronized scroll) or *Slider* overlay
 - **Keyboard review**: Approve (`A`), Needs Changes (`X`), `←` / `→` between diffs, auto-advance to the next pending diff
 - **Reviewed sections**: rejected and approved diffs go to separate sections, so you can find what to report on the PR
-- **Filters** by suite, viewport, review status, Claude's verdict and text
+- **Filters** by suite, Playwright project, review status, Claude's verdict and text
 - **Claude pre-review** (optional): a verdict and an explanation on every diff — see below
 - **Persistent state**: review decisions are saved in your browser
 

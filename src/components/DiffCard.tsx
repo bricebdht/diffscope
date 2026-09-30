@@ -15,6 +15,7 @@ export function DiffCard({ diff, onClick }: DiffCardProps) {
   const getStatus = useReviewStore(s => s.getStatus);
   const status = getStatus(diff.id);
   const suggestion = useReviewStore(s => s.aiSuggestions?.byId[diff.id]);
+  const showProject = useReviewStore(s => s.availableProjects.length > 1);
 
   return (
     <button
@@ -79,7 +80,7 @@ export function DiffCard({ diff, onClick }: DiffCardProps) {
         )}
 
         {/* Mobile badge */}
-        {diff.viewport === 'phone' && (
+        {diff.mobile && (
           <span className="absolute top-1 right-1 bg-black/70 text-muted-foreground rounded p-0.5">
             <Smartphone className="h-3 w-3" />
           </span>
@@ -90,9 +91,12 @@ export function DiffCard({ diff, onClick }: DiffCardProps) {
       <div className="p-2">
         <div className="text-xs font-medium truncate">{diff.description}</div>
         <div className="flex items-center gap-1 flex-wrap mt-1">
-          {diff.viewport === 'phone' && (
-            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-purple-950 text-purple-300">
-              mobile
+          {showProject && (
+            <Badge
+              variant="secondary"
+              className={cn('text-[10px] px-1.5 py-0 h-4', diff.mobile && 'bg-purple-950 text-purple-300')}
+            >
+              {diff.project}
             </Badge>
           )}
           {diff.pixelCount != null && (

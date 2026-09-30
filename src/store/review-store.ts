@@ -45,7 +45,7 @@ export type CompareMode = 'sidebyside' | 'slider';
 
 export interface Filters {
   suite: string;
-  viewport: string;
+  project: string;
   status: string;
   search: string;
   diffsOnly: boolean;
@@ -68,6 +68,7 @@ interface ReviewStore {
   // Computed
   filteredDiffs: DiffEntry[];
   availableSuites: string[];
+  availableProjects: string[];
 
   // Actions
   setDiffs: (diffs: DiffEntry[]) => void;
@@ -89,7 +90,7 @@ interface ReviewStore {
 
 const defaultFilters: Filters = {
   suite: '',
-  viewport: '',
+  project: '',
   status: '',
   search: '',
   diffsOnly: true,
@@ -124,7 +125,7 @@ function applyFilters(
   return sortForDisplay(diffs.filter(d => {
     if (filters.diffsOnly && !d.hasDiff) return false;
     if (filters.suite && d.suite !== filters.suite) return false;
-    if (filters.viewport && d.viewport !== filters.viewport) return false;
+    if (filters.project && d.project !== filters.project) return false;
     if (filters.status) {
       const s = reviewState.diffs[d.id]?.status || 'pending';
       if (filters.status === 'pending' && s !== 'pending') return false;
@@ -137,7 +138,7 @@ function applyFilters(
     }
     if (filters.search) {
       const q = filters.search.toLowerCase();
-      const haystack = `${d.description} ${d.suite} ${d.viewport}`.toLowerCase();
+      const haystack = `${d.description} ${d.suite} ${d.project}`.toLowerCase();
       if (!haystack.includes(q)) return false;
     }
     return true;
@@ -155,12 +156,21 @@ export const useReviewStore = create<ReviewStore>((set, get) => ({
   approvedSectionOpen: false,
   filteredDiffs: [],
   availableSuites: [],
+  availableProjects: [],
 
   setDiffs: (diffs) => {
     const state = get();
-    const filteredDiffs = applyFilters(diffs, state.filters, state.reviewState, state.aiSuggestions);
     const availableSuites = [...new Set(diffs.map(d => d.suite))].sort();
-    set({ diffs, filteredDiffs, availableSuites });
+    const availableProjects = [...new Set(diffs.map(d => d.project).filter(Boolean))].sort();
+    // Drop suite/project filters the new report doesn't have: their selector may be hidden,
+    // leaving an empty grid with no visible reason.
+    const filters = {
+      ...state.filters,
+      suite: availableSuites.includes(state.filters.suite) ? state.filters.suite : '',
+      project: availableProjects.includes(state.filters.project) ? state.filters.project : '',
+    };
+    const filteredDiffs = applyFilters(diffs, filters, state.reviewState, state.aiSuggestions);
+    set({ diffs, filters, filteredDiffs, availableSuites, availableProjects });
   },
 
   setFilter: (key, value) => {

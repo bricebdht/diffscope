@@ -2,7 +2,10 @@ export interface DiffEntry {
   id: string;
   baseName: string;
   suite: string;
-  viewport: 'desktop' | 'phone';
+  /** Playwright project name, e.g. "chromium" or "Mobile Safari". */
+  project: string;
+  /** Guessed from the project name, to show a phone icon. */
+  mobile: boolean;
   description: string;
   hasDiff: boolean;
   pixelCount: number | null;

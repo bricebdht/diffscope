@@ -52,6 +52,8 @@ function diffId(fileName: string, test: PlaywrightTest, baseName: string): strin
   return hashCode(`pw-report/${testKey}/${baseName}`);
 }
 
+const MOBILE_PROJECT = /mobile|phone|iphone|ipad|android|pixel|galaxy|tablet/i;
+
 function parseFileName(baseName: string): { description: string } {
   return { description: baseName };
 }
@@ -102,7 +104,7 @@ async function buildDiffs(
   const found = new Map<string, {
     baseName: string;
     suite: string;
-    viewport: DiffEntry['viewport'];
+    project: string;
     diffAtt: PlaywrightAttachment;
     actualAtt?: PlaywrightAttachment;
     expAtt?: PlaywrightAttachment;
@@ -114,7 +116,7 @@ async function buildDiffs(
     const suite = fileName.replace(/\.spec\.\w+$/, '') || 'unknown';
 
     for (const test of (file.tests || [])) {
-      const viewport = test.projectName === 'phone' ? 'phone' : 'desktop';
+      const project = test.projectName ?? '';
       for (const result of (test.results || [])) {
         const attachments = result.attachments || [];
         // A test can fail several screenshot assertions (expect.soft): one diff each.
@@ -123,7 +125,7 @@ async function buildDiffs(
           found.set(diffId(fileName, test, baseName), {
             baseName,
             suite,
-            viewport,
+            project,
             diffAtt,
             actualAtt: attachments.find(a => a.name === `${baseName}-actual.png`),
             expAtt: attachments.find(a => a.name === `${baseName}-expected.png`),
@@ -134,7 +136,7 @@ async function buildDiffs(
   }
 
   const diffs: DiffEntry[] = await Promise.all(
-    [...found].map(async ([id, { baseName, suite, viewport, diffAtt, actualAtt, expAtt }]) => {
+    [...found].map(async ([id, { baseName, suite, project, diffAtt, actualAtt, expAtt }]) => {
       const [diffBlob, actualBlob, expectedBlob] = await Promise.all([
         diffAtt.path ? resolveImage(diffAtt.path) : null,
         actualAtt?.path ? resolveImage(actualAtt.path) : null,
@@ -144,7 +146,8 @@ async function buildDiffs(
         id,
         baseName,
         suite,
-        viewport,
+        project,
+        mobile: MOBILE_PROJECT.test(project),
         description: parseFileName(baseName).description,
         hasDiff: true,
         pixelCount: null,
