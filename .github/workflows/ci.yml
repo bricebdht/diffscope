@@ -23,3 +23,26 @@ jobs:
       - run: npm run build
       - name: Check plugin scripts
         run: for f in plugin/skills/*/scripts/*.mjs; do node --check "$f"; done
+
+  # Compares the PR's screenshots to the base branch's, captured in the same run (scripts/e2e.mjs).
+  # The report is uploaded as `playwright-report`, ready to review in Diffscope or with /diffscope:review.
+  e2e:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/e2e.mjs --base origin/${{ github.base_ref }}
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14

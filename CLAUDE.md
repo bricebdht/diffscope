@@ -19,7 +19,11 @@ Test fixture (in `test-fixture/`):
 - `npm run report` — full pipeline (baseline → diffs → zip)
 - `npm run demo` — rebuild the app's sample report in `public/demo/`
 
-There is no automated test suite for the main app.
+E2E tests (`e2e/`, Playwright, driven through the sample report):
+- `npm run test:e2e` — builds `origin/main` in a temporary worktree, captures the reference screenshots from it, then builds the current branch and compares (`scripts/e2e.mjs`, `--base <ref>` to change the base). Reference screenshots are never committed.
+- `npx playwright test` — reruns against the existing build (`dist/`) and references (`e2e-snapshots/`).
+
+CI runs the same comparison on every PR and uploads the report as the `playwright-report` artifact, which `/diffscope:review` picks up.
 
 ## Architecture
 
