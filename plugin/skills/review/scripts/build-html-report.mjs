@@ -98,13 +98,22 @@ function render(manifest, suggestions) {
   // Only the report's name: the page gets shared, the local path is noise (and personal).
   const reportName = path.basename(manifest.report);
   const generatedAt = suggestions.generatedAt ? new Date(suggestions.generatedAt).toLocaleString('en-GB') : '';
+  const branch = typeof suggestions.branch === 'string' ? suggestions.branch : '';
+  const pr = suggestions.pullRequest?.number ? suggestions.pullRequest : null;
+  const prLabel = pr ? `PR #${pr.number}${pr.title ? ` ${pr.title}` : ''}` : '';
+  const prHtml = !pr ? ''
+    : /^https?:\/\//.test(pr.url || '') ? `<a href="${esc(pr.url)}">${esc(prLabel)}</a>` : esc(prLabel);
+  const source = [
+    branch ? `<span class="source-item">Branch <code>${esc(branch)}</code></span>` : '',
+    prHtml ? `<span class="source-item">${prHtml}</span>` : '',
+  ].filter(Boolean).join('');
 
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Diffscope review</title>
+<title>Diffscope review${prLabel ? ` · ${esc(prLabel)}` : branch ? ` · ${esc(branch)}` : ''}</title>
 <style>
   :root {
     --bg: #f6f7f9; --panel: #ffffff; --text: #16181d; --muted: #5f6673; --border: #e2e5ea;
@@ -122,6 +131,10 @@ function render(manifest, suggestions) {
   body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
   main { max-width: 1200px; margin: 0 auto; padding: 32px 16px 64px; }
   h1 { font-size: 22px; margin: 0 0 4px; }
+  .source { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 4px 0; font-size: 15px; }
+  .source code { font-size: 13px; background: var(--panel); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; word-break: break-all; }
+  .source a { color: var(--accent); font-weight: 600; text-decoration: none; }
+  .source a:hover { text-decoration: underline; }
   .sub { color: var(--muted); margin: 0 0 20px; word-break: break-all; }
   .overview { background: linear-gradient(135deg, var(--accent-bg), var(--panel) 70%); border: 1px solid var(--accent-border); border-radius: 14px; padding: 20px; margin-bottom: 20px; }
   .overview-label { color: var(--accent); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
@@ -174,6 +187,7 @@ function render(manifest, suggestions) {
 <body>
 <main>
   <h1>Diffscope review</h1>
+  ${source ? `<p class="source">${source}</p>` : ''}
   <p class="sub">${esc(reportName)}${generatedAt ? ` · ${esc(generatedAt)}` : ''}</p>
   <section class="overview">
     <div class="overview-label">✦ Claude's review · ${rows.length} diff${rows.length === 1 ? '' : 's'}</div>

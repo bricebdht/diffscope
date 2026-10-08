@@ -34,7 +34,7 @@ Claude:
 1. extracts every diff with `scripts/extract-report.mjs` (expected, actual and diff images, plus close-ups of the changed regions);
 2. reads the branch's code changes (`git diff` against the PR base branch);
 3. reviews each diff and writes `diffscope-suggestions.json` next to the report;
-4. builds `diffscope-review.html` next to it and opens it: a self-contained page with its summary and every diff (needs changes and unsure first), with its verdict, explanation and the expected / actual / diff close-ups. The images are embedded, so you can share the file as is.
+4. builds `diffscope-review.html` next to it and opens it: a self-contained page with the reviewed branch and pull request, its summary and every diff (needs changes and unsure first), with its verdict, explanation and the expected / actual / diff close-ups. The images are embedded, so you can share the file as is.
 
 Then, in Diffscope, load the report as usual and click **Claude review** in the header to import the file. Each card gets Claude's verdict, the comparison view shows its explanation and the related files, and the **Claude** filter lets you look at one verdict at a time. You still make every decision.
 
@@ -46,6 +46,8 @@ Then, in Diffscope, load the report as usual and click **Claude review** in the 
   "version": 1,
   "generatedAt": "2026-09-23T12:00:00.000Z",
   "generator": "claude-code",
+  "branch": "feature/header",
+  "pullRequest": { "number": 42, "title": "Tighten the header spacing", "url": "https://github.com/owner/repo/pull/42" },
   "summary": "Overall summary of the report.",
   "suggestions": [
     {
