@@ -59,6 +59,18 @@ function listArtifacts(repo, runId) {
     .map(a => ({ name: a.name, size: a.size_in_bytes, score: reportScore(a.name) }));
 }
 
+// The pull request of a branch (open first, then the most recent closed or merged one), or null.
+function findPullRequest(repo, branch) {
+  try {
+    const prs = ghJson('pr', 'list', '--repo', repo, '--head', branch, '--state', 'all', '--limit', '10',
+      '--json', 'number,title,url,state');
+    const pr = prs.find(p => p.state === 'OPEN') || prs[0];
+    return pr ? { number: pr.number, title: pr.title, url: pr.url, state: pr.state } : null;
+  } catch {
+    return null;
+  }
+}
+
 function main() {
   const args = parseArgs(process.argv.slice(2));
 
@@ -127,10 +139,14 @@ function main() {
     // not in a git repository
   }
 
+  // With --run, the run may belong to another branch than the current one.
+  const runBranch = r.headBranch || branch;
+
   console.log(JSON.stringify({
     reportDir,
     repo,
-    branch,
+    branch: runBranch,
+    pullRequest: findPullRequest(repo, runBranch),
     run: {
       id: r.databaseId,
       workflow: r.workflowName,

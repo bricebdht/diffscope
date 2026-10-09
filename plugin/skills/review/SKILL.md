@@ -21,7 +21,7 @@ Arguments: `$ARGUMENTS`
 node "${CLAUDE_SKILL_DIR}/scripts/fetch-ci-report.mjs" <options>
 ```
 
-It uses the GitHub CLI (`gh`), looks through the branch's recent completed runs for a Playwright report artifact, downloads it, and prints a JSON summary: `reportDir` (the local report folder to use from now on), the run (workflow, conclusion, date, URL, `headSha`), the artifact name, and `matchesLocalHead`.
+It uses the GitHub CLI (`gh`), looks through the branch's recent completed runs for a Playwright report artifact, downloads it, and prints a JSON summary: `reportDir` (the local report folder to use from now on), the `branch` the run tested and its `pullRequest` (`number`, `title`, `url`, or null), the run (workflow, conclusion, date, URL, `headSha`), the artifact name, and `matchesLocalHead`.
 
 - Tell the user in one line which run you're reviewing (workflow, date, conclusion, URL).
 - If `matchesLocalHead` is false, the CI tested another commit than the local checkout (new local commits, or a branch you haven't pulled). Say so, and use `headSha` as the code reference in step 3.
@@ -46,6 +46,7 @@ If `expectedSize` and `actualSize` differ, the page or component changed size: s
 The point of running this in Claude Code is that you can relate each visual change to the code change that caused it.
 
 - Find the base branch: `gh pr view --json baseRefName -q .baseRefName` if the branch has a PR, otherwise the default branch (`main` or `master`).
+- With a local report, also note the reviewed branch (`git rev-parse --abbrev-ref HEAD`) and its pull request (`gh pr view --json number,title,url`, none if it fails): they go in the suggestions file. With a CI report, use the `branch` and `pullRequest` printed by `fetch-ci-report.mjs`.
 - Look at `git diff <base>...HEAD` (plus uncommitted changes), focusing on styles, components, templates, assets, fonts and design tokens. When the report comes from CI, diff against the run's `headSha` instead of `HEAD` (and skip uncommitted changes), fetching it first if it isn't available locally.
 - Read the spec files from the manifest (`specFile`) when you need to know which page or component a snapshot shows.
 
@@ -76,6 +77,8 @@ Write it to the `suggestionsPath` printed by the extractor, as UTF-8 JSON:
   "version": 1,
   "generatedAt": "<ISO 8601 timestamp>",
   "generator": "claude-code",
+  "branch": "feature/header",
+  "pullRequest": { "number": 42, "title": "Tighten the header spacing", "url": "https://github.com/owner/repo/pull/42" },
   "summary": "Two or three sentences: what changed overall, what looks intended, what needs a close look.",
   "suggestions": [
     {
@@ -95,6 +98,7 @@ Write it to the `suggestionsPath` printed by the extractor, as UTF-8 JSON:
 ```
 
 - Include one entry per diff in the manifest, and copy `id` exactly: Diffscope uses it to attach the suggestion to the right diff.
+- `branch` is the reviewed branch and `pullRequest` its pull request: leave `pullRequest` out when there is none, and both out when the report isn't tied to a branch. The review page shows them in its header.
 - `relatedFiles` and `group` are optional; `summary` and `details` must be plain text (no Markdown), in the user's language.
 
 ## 6. Build the review page
@@ -105,7 +109,7 @@ Build a self-contained HTML page of your conclusions and open it in the browser:
 node "${CLAUDE_SKILL_DIR}/scripts/build-html-report.mjs" "<manifest.json path>" --open
 ```
 
-It writes `diffscope-review.html` next to the suggestions file: your summary, then every diff (needs changes and unsure first) with your verdict, explanation and the expected / actual / diff close-ups. The images are embedded, so the file can be shared as is.
+It writes `diffscope-review.html` next to the suggestions file: the reviewed branch and pull request, your summary, then every diff (needs changes and unsure first) with your verdict, explanation and the expected / actual / diff close-ups. The images are embedded, so the file can be shared as is.
 
 ## 7. Report back
 
