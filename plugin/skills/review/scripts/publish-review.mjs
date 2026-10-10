@@ -1,30 +1,25 @@
 #!/usr/bin/env node
-// Publishes Claude's review on the pull request: pushes the review page and the
-// close-ups to a per-PR branch (diffscope-review/pr-<number>, one force-pushed
-// commit), then posts or updates a single PR comment showing the verdicts with
-// the images. Also deletes the review branches of closed PRs and the ones older
-// than the retention period, so the images expire.
+// Publishes Claude's review of a CI report on the pull request: posts or
+// updates a single PR comment with the merge recommendation and every diff's
+// verdict (text only), a link to the run's report artifact, and the
+// suggestions file to paste into Diffscope next to that report.
 //
-// Usage: node publish-review.mjs <manifest.json> [--repo <owner/name>] [--remote <name>]
-//                                [--retention-days <n>] [--dry-run]
-//   Reads the suggestions file referenced by the manifest (it must have
-//   pullRequest.number) and the diffscope-review.html built next to it.
-//   --dry-run  writes the comment to diffscope-review-comment.md without pushing or posting.
+// Usage: node publish-review.mjs <manifest.json> [--repo <owner/name>] [--dry-run]
+//   Reads the suggestions file referenced by the manifest. It must have
+//   pullRequest.number and run (the reviewed CI run): a local report has no
+//   reliable commit and nothing for the PR's readers to download.
+//   --dry-run  writes the comment to diffscope-review-comment.md without posting it.
 
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-const BRANCH_PREFIX = 'diffscope-review/pr-';
-const DEFAULT_RETENTION_DAYS = 7;
 // The first line of the comment, used to find it again (and by projects that check it).
 const MARKER = '<!-- diffscope-review -->';
 // GitHub rejects comments over 65536 characters.
 const MAX_COMMENT = 65000;
-// Close-ups are shown at most this wide in the comment.
-const MAX_IMAGE_WIDTH = 300;
-const MAX_REGIONS = 3;
+const APP_URL = 'https://bricebdht.github.io/diffscope/';
 
 const VERDICTS = {
   reject: { label: 'Needs changes', count: 'to fix', icon: '❌', order: 0 },
@@ -45,27 +40,21 @@ const MERGE = {
 
 const verdictOf = (s) => (VERDICTS[s?.verdict] ? s.verdict : 'unsure');
 
-function run(cmd, args, input) {
+function run(cmd, args) {
   try {
-    return execFileSync(cmd, args, {
-      encoding: 'utf8',
-      input,
-      stdio: [input === undefined ? 'ignore' : 'pipe', 'pipe', 'pipe'],
-      maxBuffer: 64 * 1024 * 1024,
-    }).trim();
+    return execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
   } catch (err) {
     const stderr = err.stderr?.toString().trim();
     throw new Error(`${cmd} ${args.join(' ')} failed${stderr ? `: ${stderr}` : ''}`);
   }
 }
 
-const git = (...args) => run('git', args);
 const gh = (...args) => run('gh', args);
 
 function parseArgs(argv) {
   const args = { positional: [] };
   for (let i = 0; i < argv.length; i++) {
-    const m = argv[i].match(/^--(repo|remote|retention-days|dry-run)$/);
+    const m = argv[i].match(/^--(repo|dry-run)$/);
     if (!m) {
       if (argv[i].startsWith('--')) throw new Error(`Unknown argument: ${argv[i]}`);
       args.positional.push(argv[i]);
@@ -92,91 +81,14 @@ function mergeRecommendation(suggestions, counts) {
   return { verdict, reason: suggestions.merge?.reason };
 }
 
-// Files to push, keyed by their path on the review branch.
-function collectFiles(manifest, reviewHtml) {
-  const root = path.dirname(manifest.manifestPath);
-  const files = new Map([['index.html', reviewHtml]]);
-  for (const diff of manifest.diffs) {
-    const sets = diff.regions?.length ? diff.regions.slice(0, MAX_REGIONS).map(r => r.images) : [diff.images];
-    for (const images of sets) {
-      for (const file of Object.values(images || {})) {
-        if (file && fs.existsSync(file)) files.set(path.relative(root, file).split(path.sep).join('/'), file);
-      }
-    }
-  }
-  return files;
-}
+const diffTitle = (diff) => [diff.snapshot, diff.projectName].filter(Boolean).map(md).join(' · ');
 
-// Creates an orphan commit holding the files, without touching the working tree
-// or the index, and returns its sha.
-function commitFiles(files, message) {
-  const entries = [...files.entries()];
-  const shas = run('git', ['hash-object', '-w', '--stdin-paths'], entries.map(([, file]) => file).join('\n') + '\n').split(/\r?\n/);
-
-  // Nested { name: sha | subtree } map, written bottom-up with mktree.
-  const tree = {};
-  entries.forEach(([p], i) => {
-    const parts = p.split('/');
-    let node = tree;
-    for (const dir of parts.slice(0, -1)) node = node[dir] ??= {};
-    node[parts.at(-1)] = shas[i];
-  });
-  const writeTree = (node) => {
-    const lines = Object.entries(node).map(([name, value]) => (typeof value === 'string'
-      ? `100644 blob ${value}\t${name}`
-      : `040000 tree ${writeTree(value)}\t${name}`));
-    return run('git', ['mktree'], lines.join('\n') + '\n');
-  };
-
-  return git('commit-tree', writeTree(tree), '-m', message);
-}
-
-// The git remote pointing at the repository (origin when none matches).
-function findRemote(repo, wanted) {
-  if (wanted) return wanted;
-  const remotes = git('remote', '-v').split(/\r?\n/);
-  const match = remotes.find(line => /\(push\)$/.test(line) && line.toLowerCase().includes(repo.toLowerCase()));
-  return match ? match.split(/\s+/)[0] : 'origin';
-}
-
-// Deletes review branches of closed PRs and the ones older than the retention.
-function pruneBranches(repo, currentPr, retentionDays) {
-  const refs = gh('api', `repos/${repo}/git/matching-refs/heads/${BRANCH_PREFIX}`, '--jq', '.[] | [.ref, .object.sha] | @tsv');
-  const pruned = [];
-  for (const line of refs.split(/\r?\n/).filter(Boolean)) {
-    const [ref, sha] = line.split('\t');
-    const branch = ref.replace(/^refs\/heads\//, '');
-    const number = Number(branch.slice(BRANCH_PREFIX.length));
-    if (number === currentPr) continue; // overwritten below
-    try {
-      const state = number ? gh('pr', 'view', String(number), '--repo', repo, '--json', 'state', '-q', '.state') : 'UNKNOWN';
-      const date = new Date(gh('api', `repos/${repo}/git/commits/${sha}`, '-q', '.committer.date'));
-      const ageDays = (Date.now() - date.getTime()) / 86400000;
-      if (state !== 'OPEN' || ageDays > retentionDays) {
-        gh('api', '-X', 'DELETE', `repos/${repo}/git/refs/heads/${branch}`);
-        pruned.push(branch);
-      }
-    } catch (err) {
-      console.error(`publish-review: could not prune ${branch}: ${err.message}`);
-    }
-  }
-  return pruned;
-}
-
-function imageTable(images, url, width) {
-  const cells = ['expected', 'actual', 'diff'].map(kind => (images?.[kind] && url(images[kind])
-    ? `<td><img src="${url(images[kind])}" width="${width}" alt="${kind}"></td>`
-    : '<td>not available</td>'));
-  return `<table><tr><th>Expected</th><th>Actual</th><th>Diff</th></tr><tr>${cells.join('')}</tr></table>`;
-}
-
-function diffSection(diff, s, url) {
-  const title = [diff.snapshot, diff.projectName].filter(Boolean).map(md).join(' · ');
+function diffSection(diff, s) {
   const meta = s
     ? `${CATEGORIES[s.category] || CATEGORIES.unknown} · ${s.confidence || 'low'} confidence`
     : 'No suggestion for this diff';
   const lines = [
-    `#### ${VERDICTS[verdictOf(s)].icon} ${title}${s?.group ? ` — ${md(s.group)}` : ''}`,
+    `#### ${VERDICTS[verdictOf(s)].icon} ${diffTitle(diff)}${s?.group ? ` — ${md(s.group)}` : ''}`,
     '',
     `<sub>${meta}${diff.changedPixels != null ? ` · ${diff.changedPixels.toLocaleString('en-US')} changed px` : ''}</sub>`,
     '',
@@ -184,16 +96,12 @@ function diffSection(diff, s, url) {
   if (s?.summary) lines.push(`**${md(s.summary)}**`, '');
   if (s?.details) lines.push(md(s.details), '');
   if (s?.relatedFiles?.length) lines.push(`Related: ${s.relatedFiles.map(f => `\`${md(f)}\``).join(', ')}`, '');
-  if (url) {
-    const sets = diff.regions?.length
-      ? diff.regions.slice(0, MAX_REGIONS).map(r => ({ images: r.images, width: Math.min(r.width || MAX_IMAGE_WIDTH, MAX_IMAGE_WIDTH) }))
-      : [{ images: diff.images, width: MAX_IMAGE_WIDTH }];
-    for (const { images, width } of sets) lines.push(imageTable(images, url, width), '');
-  }
   return lines.join('\n');
 }
 
-function renderComment({ manifest, suggestions, url, reviewedCommit, prHead, branchUrl, htmlUrl, retentionDays }) {
+const diffLine = (diff, s) => `- ${VERDICTS[verdictOf(s)].icon} **${diffTitle(diff)}**${s?.summary ? `: ${md(s.summary)}` : ''}`;
+
+function renderComment({ manifest, suggestions, prHead }) {
   const byId = new Map((suggestions.suggestions || []).map(s => [s.id, s]));
   const rows = manifest.diffs
     .map(diff => ({ diff, s: byId.get(diff.id) }))
@@ -204,64 +112,91 @@ function renderComment({ manifest, suggestions, url, reviewedCommit, prHead, bra
   const counts = { reject: 0, unsure: 0, approve: 0 };
   for (const { s } of rows) counts[verdictOf(s)]++;
   const merge = mergeRecommendation(suggestions, counts);
+  const reviewedCommit = suggestions.commit;
+  const ciRun = suggestions.run;
 
   const head = [
     MARKER,
-    `<!-- diffscope-review-commit: ${reviewedCommit || 'unknown'} -->`,
+    `<!-- diffscope-review-commit: ${reviewedCommit} -->`,
     `## ✦ Diffscope review: ${MERGE[merge.verdict]}`,
     '',
   ];
   if (merge.reason) head.push(`> ${md(merge.reason)}`, '');
   const facts = [
-    reviewedCommit ? `Reviewed commit \`${reviewedCommit.slice(0, 7)}\`` : null,
-    suggestions.branch ? `branch \`${md(suggestions.branch)}\`` : null,
+    `Reviewed commit \`${reviewedCommit.slice(0, 7)}\``,
+    ciRun.url ? `[CI run](${ciRun.url})` : null,
     `${rows.length} diff${rows.length === 1 ? '' : 's'}: ${Object.entries(VERDICTS).map(([v, { icon, count }]) => `${icon} ${counts[v]} ${count}`).join(' · ')}`,
   ].filter(Boolean);
   head.push(facts.join(' · '), '');
-  if (reviewedCommit && prHead && reviewedCommit !== prHead) {
-    head.push(`> [!WARNING]\n> The PR has new commits since this review (head is now \`${prHead.slice(0, 7)}\`). Run \`/diffscope:review\` again.`, '');
+  if (prHead && reviewedCommit !== prHead) {
+    head.push(`> [!WARNING]\n> The PR has new commits since this review (head is now \`${prHead.slice(0, 7)}\`). Run \`/diffscope:review\` again once CI has run.`, '');
   }
   if (suggestions.summary) head.push(md(suggestions.summary), '');
 
+  const report = ciRun.artifactUrl
+    ? `[download the \`${md(ciRun.artifact || 'report')}\` artifact](${ciRun.artifactUrl})`
+    : `download the \`${md(ciRun.artifact || 'report')}\` artifact of the [CI run](${ciRun.url})`;
+  const howTo = [
+    '### See the screenshots in Diffscope',
+    '',
+    `1. ${report} (it expires with the run's artifacts);`,
+    `2. drop the zip into [Diffscope](${APP_URL});`,
+    '3. click **Claude review**, then paste the suggestions below.',
+    '',
+  ];
+  const json = [
+    '<details><summary>Suggestions file (<code>diffscope-suggestions.json</code>)</summary>',
+    '',
+    '```json',
+    // Escaped so a backtick in the text can't close the code block.
+    JSON.stringify(suggestions).replace(/`/g, '\\u0060'),
+    '```',
+    '',
+    '</details>',
+    '',
+  ];
   const generatedAt = suggestions.generatedAt ? new Date(suggestions.generatedAt).toISOString().slice(0, 16).replace('T', ' ') + ' UTC' : null;
   const footer = [
     '---',
-    `<sub>Generated by Claude Code with <code>/diffscope:review</code>${generatedAt ? ` on ${generatedAt}` : ''}. `
-      + (branchUrl
-        ? `The images live on the <a href="${branchUrl}">review branch</a>, deleted after ${retentionDays} days or when the PR is closed: run the review again to bring them back. <a href="${htmlUrl}">Standalone review page</a> (download and open in a browser).`
-        : '')
-      + '</sub>',
+    `<sub>Generated by Claude Code with <code>/diffscope:review</code>${generatedAt ? ` on ${generatedAt}` : ''}.</sub>`,
   ];
 
   // Needs changes and unsure diffs in full, approved ones folded. When the
-  // comment gets too long, approved diffs lose their images, then their details.
-  const build = (approvedMode) => {
+  // comment gets too long, approved diffs become a list, then every diff, then
+  // the suggestions file goes (it can be rebuilt by running the review again).
+  const build = ({ approvedFull, othersFull, withJson }) => {
     const parts = [...head];
     for (const v of ['reject', 'unsure']) {
       const group = rows.filter(r => verdictOf(r.s) === v);
       if (!group.length) continue;
       parts.push(`### ${VERDICTS[v].icon} ${VERDICTS[v].label} (${group.length})`, '');
-      for (const { diff, s } of group) parts.push(diffSection(diff, s, url));
+      if (othersFull) for (const { diff, s } of group) parts.push(diffSection(diff, s));
+      else parts.push(...group.map(({ diff, s }) => diffLine(diff, s)), '');
     }
     const approved = rows.filter(r => verdictOf(r.s) === 'approve');
     if (approved.length) {
       parts.push(`<details><summary><b>${VERDICTS.approve.icon} ${VERDICTS.approve.label} (${approved.length})</b></summary>`, '');
-      if (approvedMode === 'list') {
-        for (const { diff, s } of approved) parts.push(`- **${md(diff.snapshot)}**${diff.projectName ? ` · ${md(diff.projectName)}` : ''}: ${md(s?.summary)}`);
-        parts.push('');
-      } else {
-        for (const { diff, s } of approved) parts.push(diffSection(diff, s, approvedMode === 'full' ? url : null));
-      }
+      if (approvedFull) for (const { diff, s } of approved) parts.push(diffSection(diff, s));
+      else parts.push(...approved.map(({ diff, s }) => diffLine(diff, s)), '');
       parts.push('</details>', '');
     }
+    parts.push(...howTo);
+    if (withJson) parts.push(...json);
+    else parts.push('_The suggestions file is too long for a comment: run `/diffscope:review` on this branch to get it._', '');
     return [...parts, ...footer].join('\n');
   };
 
-  for (const mode of ['full', 'text', 'list']) {
+  const modes = [
+    { approvedFull: true, othersFull: true, withJson: true },
+    { approvedFull: false, othersFull: true, withJson: true },
+    { approvedFull: false, othersFull: false, withJson: true },
+    { approvedFull: false, othersFull: false, withJson: false },
+  ];
+  for (const mode of modes) {
     const body = build(mode);
     if (body.length <= MAX_COMMENT) return { body, merge, counts };
   }
-  throw new Error('The review is too long for a GitHub comment, even without the approved diffs\' images.');
+  throw new Error('The review is too long for a GitHub comment, even as a plain list of diffs.');
 }
 
 // Posts the comment, or updates the previous review comment of the same user.
@@ -285,28 +220,23 @@ function upsertComment(repo, number, body) {
 function main() {
   const args = parseArgs(process.argv.slice(2));
   const manifestPath = args.positional[0];
-  if (!manifestPath) throw new Error('Usage: node publish-review.mjs <manifest.json> [--repo <owner/name>] [--remote <name>] [--retention-days <n>] [--dry-run]');
-  const retentionDays = Number(args['retention-days'] ?? DEFAULT_RETENTION_DAYS);
+  if (!manifestPath) throw new Error('Usage: node publish-review.mjs <manifest.json> [--repo <owner/name>] [--dry-run]');
 
-  const manifest = { ...JSON.parse(fs.readFileSync(manifestPath, 'utf8')), manifestPath: path.resolve(manifestPath) };
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
   if (!fs.existsSync(manifest.suggestionsPath)) throw new Error(`Suggestions file not found: ${manifest.suggestionsPath}`);
   const suggestions = JSON.parse(fs.readFileSync(manifest.suggestionsPath, 'utf8'));
-  const reviewHtml = path.join(path.dirname(manifest.suggestionsPath), 'diffscope-review.html');
-  if (!fs.existsSync(reviewHtml)) throw new Error(`Review page not found: ${reviewHtml} (run build-html-report.mjs first).`);
 
   const number = suggestions.pullRequest?.number;
   if (!number) throw new Error('The suggestions file has no pullRequest.number: there is no pull request to comment on.');
+  if (!suggestions.run?.url || typeof suggestions.commit !== 'string') {
+    throw new Error('The suggestions file has no run or commit: only reviews of a CI report are posted on the pull request.');
+  }
   const repo = args.repo
     || suggestions.pullRequest.url?.match(/github\.com\/([^/]+\/[^/]+)\/pull\//)?.[1]
     || gh('repo', 'view', '--json', 'nameWithOwner', '-q', '.nameWithOwner');
-  const reviewedCommit = suggestions.commit || null;
-  const branch = `${BRANCH_PREFIX}${number}`;
 
   if (args.dryRun) {
-    const { body } = renderComment({
-      manifest, suggestions, reviewedCommit, retentionDays,
-      url: (file) => `file:///${file.replace(/\\/g, '/')}`,
-    });
+    const { body } = renderComment({ manifest, suggestions });
     const out = path.join(path.dirname(manifest.suggestionsPath), 'diffscope-review-comment.md');
     fs.writeFileSync(out, body);
     console.log(JSON.stringify({ dryRun: true, comment: out, length: body.length }, null, 2));
@@ -320,34 +250,18 @@ function main() {
   }
   const prHead = gh('pr', 'view', String(number), '--repo', repo, '--json', 'headRefOid', '-q', '.headRefOid');
 
-  const pruned = pruneBranches(repo, number, retentionDays);
-
-  const files = collectFiles(manifest, reviewHtml);
-  const commit = commitFiles(files, `Diffscope review of #${number}${reviewedCommit ? ` at ${reviewedCommit.slice(0, 7)}` : ''}`);
-  run('git', ['push', '--force', '--quiet', findRemote(repo, args.remote), `${commit}:refs/heads/${branch}`]);
-
-  // Pinned to the commit, so a later review never changes what an old comment shows.
-  const blob = (p) => `https://github.com/${repo}/blob/${commit}/${p.split('/').map(encodeURIComponent).join('/')}`;
-  const rel = new Map([...files.entries()].map(([p, file]) => [file, p]));
-  const { body, merge, counts } = renderComment({
-    manifest, suggestions, reviewedCommit, prHead, retentionDays,
-    url: (file) => (rel.has(file) ? `${blob(rel.get(file))}?raw=true` : null),
-    branchUrl: `https://github.com/${repo}/tree/${branch}`,
-    htmlUrl: `${blob('index.html')}?raw=true`,
-  });
+  const { body, merge, counts } = renderComment({ manifest, suggestions, prHead });
   const comment = upsertComment(repo, number, body);
 
   console.log(JSON.stringify({
     comment: comment.url,
     updated: comment.updated,
-    reviewBranch: branch,
-    reviewedCommit,
+    reviewedCommit: suggestions.commit,
     prHead,
     // true when the PR got new commits after the reviewed one.
-    stale: Boolean(reviewedCommit && prHead && reviewedCommit !== prHead),
+    stale: suggestions.commit !== prHead,
     merge: merge.verdict,
     counts,
-    pruned,
   }, null, 2));
 }
 

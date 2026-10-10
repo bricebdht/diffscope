@@ -36,7 +36,7 @@ Claude:
 2. reads the branch's code changes (`git diff` against the PR base branch);
 3. reviews each diff and writes `diffscope-suggestions.json` next to the report;
 4. builds `diffscope-review.html` next to it and opens it: a self-contained page with the reviewed branch, pull request and commit, its merge recommendation and summary and every diff (needs changes and unsure first), with its verdict, explanation and the expected / actual / diff close-ups. The images are embedded, so you can share the file as is;
-5. when the branch has a pull request, posts the review on it with `scripts/publish-review.mjs` (see below).
+5. when the report comes from CI and the branch has a pull request, posts the review on it with `scripts/publish-review.mjs` (see below).
 
 Then, in Diffscope, load the report as usual and click **Claude review** in the header to import the file. Each card gets Claude's verdict, the comparison view shows its explanation and the related files, and the **Claude** filter lets you look at one verdict at a time. You still make every decision.
 
@@ -68,15 +68,15 @@ Then, in Diffscope, load the report as usual and click **Claude review** in the 
 }
 ```
 
-`branch`, `pullRequest`, `commit` (the reviewed commit) and `merge` (`ready | changes | unsure`, with a `reason`) are optional.
+`branch`, `pullRequest`, `merge` (`ready | changes | unsure`, with a `reason`), and for a CI report `commit` (the run's head sha) and `run` (`url`, `artifact`, `artifactUrl`) are optional.
 
 `id` is computed the same way as in Diffscope (`src/lib/report-parser.ts`), from the test (Playwright's `testId`) and the snapshot name. Keep the two in sync if either changes.
 
 ## Review comment on the pull request
 
-`publish-review.mjs` pushes the review page and the close-ups to a `diffscope-review/pr-<number>` branch (one commit, force-pushed on every review), and posts a comment on the PR with Claude's merge recommendation, its summary and every diff with its images (approved ones folded). A new review updates the same comment. The images follow the repository's permissions, so on a private repository only its members see them.
+When the report comes from CI, `publish-review.mjs` posts a comment on the PR with Claude's merge recommendation, its summary and every diff's verdict and explanation (approved ones folded). A new review updates the same comment. It has no images: to see the screenshots, download the report artifact linked in the comment, drop it into Diffscope, click **Claude review** and paste the suggestions file, included at the end of the comment. This works the same on private repositories, where Diffscope can't fetch anything by itself.
 
-To keep the repository small, each run deletes the review branches of closed PRs and the ones older than 7 days (`--retention-days` to change it). Their images then stop showing in the comments: run the review again to bring them back.
+Reviews of a local report are not posted: nothing tells which commit its screenshots were taken on, and the PR's readers can't get it.
 
 The comment starts with these two lines, so a project can check that its PRs were reviewed:
 

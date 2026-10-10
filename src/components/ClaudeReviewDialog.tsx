@@ -65,6 +65,8 @@ export function ClaudeReviewDialog() {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  // The suggestions copied from the review comment on the pull request.
+  const [pasted, setPasted] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
   if (diffs.length === 0) return null;
@@ -73,20 +75,22 @@ export function ClaudeReviewDialog() {
   const counts: Record<AiVerdict, number> = { reject: 0, unsure: 0, approve: 0 };
   for (const d of withSuggestion) counts[aiSuggestions!.byId[d.id].verdict]++;
 
-  const handleFile = async (file: File) => {
+  const importText = (text: string) => {
     setError(null);
     try {
-      const ai = parseSuggestionsFile(await file.text());
+      const ai = parseSuggestionsFile(text);
       if (!diffs.some(d => ai.byId[d.id])) {
         throw new Error('None of these suggestions match the diffs of the loaded report. Was it generated from this report?');
       }
       setAiSuggestions(ai);
+      setPasted('');
       // Nothing left to do here: the verdicts now show on the grid.
       setOpen(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not read the suggestions file.');
     }
   };
+  const handleFile = async (file: File) => importText(await file.text());
 
   const dropZone = (
     <div
@@ -111,6 +115,20 @@ export function ClaudeReviewDialog() {
         <Upload className="h-3.5 w-3.5" />
         {aiSuggestions ? 'Replace with another file' : 'Choose file'}
       </Button>
+      <p className="mt-3 mb-1.5 text-xs text-muted-foreground">or paste it from the review comment on the pull request</p>
+      <div className="flex gap-2">
+        <textarea
+          value={pasted}
+          onChange={(e) => setPasted(e.target.value)}
+          placeholder='{"format":"diffscope-suggestions",…}'
+          rows={1}
+          spellCheck={false}
+          className="flex-1 min-w-0 resize-none rounded-md border border-border bg-muted px-2.5 py-1.5 text-xs font-mono"
+        />
+        <Button size="sm" className="text-xs" disabled={!pasted.trim()} onClick={() => importText(pasted)}>
+          Import
+        </Button>
+      </div>
     </div>
   );
 

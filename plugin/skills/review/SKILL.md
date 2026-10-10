@@ -23,7 +23,7 @@ Arguments: `$ARGUMENTS`
 node "${CLAUDE_SKILL_DIR}/scripts/fetch-ci-report.mjs" <options>
 ```
 
-It uses the GitHub CLI (`gh`), looks through the branch's recent completed runs for a Playwright report artifact, downloads it, and prints a JSON summary: `reportDir` (the local report folder to use from now on), the `branch` the run tested and its `pullRequest` (`number`, `title`, `url`, or null), the run (workflow, conclusion, date, URL, `headSha`), the artifact name, and `matchesLocalHead`.
+It uses the GitHub CLI (`gh`), looks through the branch's recent completed runs for a Playwright report artifact, downloads it, and prints a JSON summary: `reportDir` (the local report folder to use from now on), the `branch` the run tested and its `pullRequest` (`number`, `title`, `url`, or null), the run (workflow, conclusion, date, URL, `headSha`), the `artifact` name and its download link (`artifactUrl`), and `matchesLocalHead`.
 
 - Tell the user in one line which run you're reviewing (workflow, date, conclusion, URL).
 - If `matchesLocalHead` is false, the CI tested another commit than the local checkout (new local commits, or a branch you haven't pulled). Say so, and use `headSha` as the code reference in step 3.
@@ -48,7 +48,7 @@ If `expectedSize` and `actualSize` differ, the page or component changed size: s
 The point of running this in Claude Code is that you can relate each visual change to the code change that caused it.
 
 - Find the base branch: `gh pr view --json baseRefName -q .baseRefName` if the branch has a PR, otherwise the default branch (`main` or `master`).
-- With a local report, also note the reviewed branch (`git rev-parse --abbrev-ref HEAD`), commit (`git rev-parse HEAD`) and pull request (`gh pr view --json number,title,url`, none if it fails): they go in the suggestions file. With a CI report, use the `branch` and `pullRequest` printed by `fetch-ci-report.mjs`, and the run's `headSha` as the commit.
+- With a CI report, the suggestions file gets the `branch` and `pullRequest` printed by `fetch-ci-report.mjs`, the run's `headSha` as the commit, and the run. With a local report, note the current branch (`git rev-parse --abbrev-ref HEAD`) and its pull request (`gh pr view --json number,title,url`, none if it fails), but no commit: nothing tells which commit the screenshots were taken on.
 - Look at `git diff <base>...HEAD` (plus uncommitted changes), focusing on styles, components, templates, assets, fonts and design tokens. When the report comes from CI, diff against the run's `headSha` instead of `HEAD` (and skip uncommitted changes), fetching it first if it isn't available locally.
 - Read the spec files from the manifest (`specFile`) when you need to know which page or component a snapshot shows.
 
@@ -81,7 +81,12 @@ Write it to the `suggestionsPath` printed by the extractor, as UTF-8 JSON:
   "generator": "claude-code",
   "branch": "feature/header",
   "pullRequest": { "number": 42, "title": "Tighten the header spacing", "url": "https://github.com/owner/repo/pull/42" },
-  "commit": "<full sha of the reviewed commit>",
+  "commit": "<headSha of the CI run>",
+  "run": {
+    "url": "https://github.com/owner/repo/actions/runs/1234567890",
+    "artifact": "playwright-report",
+    "artifactUrl": "https://github.com/owner/repo/actions/runs/1234567890/artifacts/987654"
+  },
   "summary": "Two or three sentences: what changed overall, what looks intended, what needs a close look.",
   "merge": {
     "verdict": "changes",
@@ -106,7 +111,7 @@ Write it to the `suggestionsPath` printed by the extractor, as UTF-8 JSON:
 
 - Include one entry per diff in the manifest, and copy `id` exactly: Diffscope uses it to attach the suggestion to the right diff.
 - `branch` is the reviewed branch and `pullRequest` its pull request: leave `pullRequest` out when there is none, and both out when the report isn't tied to a branch. The review page shows them in its header.
-- `commit` is the reviewed commit: the PR comment records it, so projects can check that the review covers the PR's latest commit.
+- `commit` and `run` only for a CI report: `commit` is the run's `headSha`, `run` its `url` with the `artifact` and `artifactUrl` printed by `fetch-ci-report.mjs`. The PR comment records the commit, so projects can check that the review covers the PR's latest commit, and links the artifact.
 - `merge.verdict` is your merge recommendation: `ready` (every diff is approved), `changes` (at least one diff needs changes) or `unsure` (nothing clearly wrong, but some diffs need a human look). `merge.reason` says why, naming the diffs that block it.
 - `relatedFiles` and `group` are optional; `summary` and `details` must be plain text (no Markdown), in the user's language.
 
@@ -122,15 +127,15 @@ It writes `diffscope-review.html` next to the suggestions file: the reviewed bra
 
 ## 7. Post the review on the pull request
 
-Skip this step when `--no-comment` was passed or when the branch has no pull request. Otherwise run:
+Skip this step when `--no-comment` was passed, when the branch has no pull request, or when the report is local (say that only CI reports are posted, since the PR's readers can't get a local report and its commit is unknown). Otherwise run:
 
 ```bash
 node "${CLAUDE_SKILL_DIR}/scripts/publish-review.mjs" "<manifest.json path>"
 ```
 
-It pushes the review page and the close-ups to the `diffscope-review/pr-<number>` branch (a single commit, force-pushed on every review), then posts a comment on the PR with your merge recommendation, summary and every diff with its images, or updates the comment of the previous review. It also deletes the review branches of closed PRs and the ones older than 7 days: their images stop showing in the comments, and running the review again brings them back. It prints the comment URL, `stale` (true when the PR got commits after the reviewed one), and the deleted branches.
+It posts a comment on the PR, or updates the comment of the previous review, with your merge recommendation, summary and every diff's verdict and explanation (text only), a link to download the report artifact, and the suggestions file, to paste into Diffscope's **Claude review** dialog once the report is loaded. It prints the comment URL and `stale` (true when the PR got commits after the reviewed one).
 
-If it fails (no `gh`, no push access, no git repository), say why and give the review page path instead.
+If it fails (no `gh`, no access to the repository), say why and give the review page path instead.
 
 ## 8. Report back
 
