@@ -68,7 +68,7 @@ Then, in Diffscope, load the report as usual and click **Claude review** in the 
 }
 ```
 
-`branch`, `pullRequest`, `merge` (`ready | changes | unsure`, with a `reason`), and for a CI report `commit` (the run's head sha) and `run` (`url`, `artifact`, `artifactUrl`) are optional.
+`report` (every diff of the reviewed report with its changed pixel count, added by `build-html-report.mjs`: Diffscope warns when the suggestions are imported next to another report, since diff ids only depend on the test and snapshot), `branch`, `pullRequest`, `merge` (`ready | changes | unsure`, with a `reason`), and for a CI report `commit` (the run's head sha) and `run` (`url`, `artifact`, `artifactUrl`) are optional.
 
 `id` is computed the same way as in Diffscope (`src/lib/report-parser.ts`), from the test (Playwright's `testId`) and the snapshot name. Keep the two in sync if either changes.
 

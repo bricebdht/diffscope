@@ -6,6 +6,9 @@
 // Usage: node build-html-report.mjs <manifest.json> [--open]
 //   Reads the suggestions file referenced by the manifest (suggestionsPath) and
 //   writes diffscope-review.html next to it. --open opens it in the browser.
+//   Also records the reviewed report in the suggestions file (`report`: every
+//   diff's changed pixel count), so Diffscope can check it's imported next to
+//   the same report.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -245,6 +248,12 @@ function openInBrowser(file) {
   spawn(cmd, args, { detached: true, stdio: 'ignore' }).unref();
 }
 
+// Must stay identical to reportFingerprint() in publish-review.mjs, and match
+// what checkReportMatch() (src/lib/suggestions.ts) expects.
+const reportFingerprint = (manifest) => ({
+  diffs: Object.fromEntries(manifest.diffs.map(d => [d.id, d.changedPixels ?? null])),
+});
+
 function main() {
   const args = process.argv.slice(2);
   const manifestPath = args.find(a => !a.startsWith('--'));
@@ -258,6 +267,8 @@ function main() {
     throw new Error(`Suggestions file not found: ${manifest.suggestionsPath}`);
   }
   const suggestions = JSON.parse(fs.readFileSync(manifest.suggestionsPath, 'utf8'));
+  suggestions.report = reportFingerprint(manifest);
+  fs.writeFileSync(manifest.suggestionsPath, JSON.stringify(suggestions, null, 2) + '\n');
 
   const out = path.join(path.dirname(manifest.suggestionsPath), 'diffscope-review.html');
   fs.writeFileSync(out, render(manifest, suggestions));

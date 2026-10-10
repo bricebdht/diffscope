@@ -123,7 +123,7 @@ Build a self-contained HTML page of your conclusions and open it in the browser:
 node "${CLAUDE_SKILL_DIR}/scripts/build-html-report.mjs" "<manifest.json path>" --open
 ```
 
-It writes `diffscope-review.html` next to the suggestions file: the reviewed branch, pull request and commit, your merge recommendation and summary, then every diff (needs changes and unsure first) with your verdict, explanation and the expected / actual / diff close-ups. The images are embedded, so the file can be shared as is.
+It writes `diffscope-review.html` next to the suggestions file: the reviewed branch, pull request and commit, your merge recommendation and summary, then every diff (needs changes and unsure first) with your verdict, explanation and the expected / actual / diff close-ups. The images are embedded, so the file can be shared as is. It also adds a `report` field to the suggestions file (every diff's changed pixel count), which Diffscope uses to warn when the suggestions are imported next to another report: run it again if you rewrite the suggestions file afterwards.
 
 ## 7. Post the review on the pull request
 

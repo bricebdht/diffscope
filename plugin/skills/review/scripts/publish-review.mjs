@@ -217,6 +217,11 @@ function upsertComment(repo, number, body) {
   }
 }
 
+// Must stay identical to reportFingerprint() in build-html-report.mjs.
+const reportFingerprint = (manifest) => ({
+  diffs: Object.fromEntries(manifest.diffs.map(d => [d.id, d.changedPixels ?? null])),
+});
+
 function main() {
   const args = parseArgs(process.argv.slice(2));
   const manifestPath = args.positional[0];
@@ -224,7 +229,11 @@ function main() {
 
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
   if (!fs.existsSync(manifest.suggestionsPath)) throw new Error(`Suggestions file not found: ${manifest.suggestionsPath}`);
-  const suggestions = JSON.parse(fs.readFileSync(manifest.suggestionsPath, 'utf8'));
+  // The fingerprint lets Diffscope check the pasted suggestions match the report.
+  const suggestions = {
+    ...JSON.parse(fs.readFileSync(manifest.suggestionsPath, 'utf8')),
+    report: reportFingerprint(manifest),
+  };
 
   const number = suggestions.pullRequest?.number;
   if (!number) throw new Error('The suggestions file has no pullRequest.number: there is no pull request to comment on.');

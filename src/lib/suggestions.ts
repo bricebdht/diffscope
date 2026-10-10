@@ -1,4 +1,4 @@
-import type { AiCategory, AiConfidence, AiSuggestion, AiSuggestions, AiVerdict } from './types';
+import type { AiCategory, AiConfidence, AiReportMismatch, AiSuggestion, AiSuggestions, AiVerdict, DiffEntry } from './types';
 
 const VERDICTS: AiVerdict[] = ['approve', 'reject', 'unsure'];
 const CATEGORIES: AiCategory[] = ['intended', 'regression', 'noise', 'unknown'];
@@ -37,6 +37,8 @@ export function parseSuggestionsFile(text: string): AiSuggestions {
     if (typeof raw?.id !== 'string') continue;
     byId[raw.id] = {
       id: raw.id,
+      snapshot: optionalString(raw.snapshot),
+      project: optionalString(raw.project),
       verdict: pick(raw.verdict, VERDICTS, 'unsure'),
       category: pick(raw.category, CATEGORIES, 'unknown'),
       confidence: pick(raw.confidence, CONFIDENCES, 'low'),
@@ -53,5 +55,45 @@ export function parseSuggestionsFile(text: string): AiSuggestions {
     summary: optionalString(file.summary),
     generatedAt: optionalString(file.generatedAt),
     byId,
+    reportDiffs: parseReportDiffs(file.report),
   };
+}
+
+// The `report` fingerprint written by the plugin (build-html-report.mjs):
+// { diffs: { <id>: <changed pixels or null> } }.
+function parseReportDiffs(report: unknown): Record<string, number | null> | undefined {
+  const diffs = (report as Record<string, unknown> | null)?.diffs;
+  if (!diffs || typeof diffs !== 'object') return undefined;
+  const out: Record<string, number | null> = {};
+  for (const [id, pixels] of Object.entries(diffs)) out[id] = typeof pixels === 'number' ? pixels : null;
+  return out;
+}
+
+/**
+ * Compares the report Claude reviewed with the loaded one. Diff ids only depend
+ * on the test and the snapshot, so a review of another run of the same tests
+ * matches every id: the changed pixel counts tell the screenshots apart.
+ * Returns null when they match, or when the file has no fingerprint.
+ */
+export function checkReportMatch(
+  diffs: DiffEntry[],
+  ai: AiSuggestions,
+  pixelCounts: Record<string, number | null>,
+): AiReportMismatch | null {
+  const reviewed = ai.reportDiffs;
+  if (!reviewed) return null;
+  const name = (snapshot?: string, project?: string) => [snapshot, project].filter(Boolean).join(' · ');
+  const loaded = new Set(diffs.map(d => d.id));
+
+  const mismatch: AiReportMismatch = {
+    missing: Object.keys(reviewed).filter(id => !loaded.has(id))
+      .map(id => name(ai.byId[id]?.snapshot, ai.byId[id]?.project) || id),
+    unreviewed: diffs.filter(d => !(d.id in reviewed)).map(d => name(d.baseName, d.project)),
+    changed: diffs.filter(d => {
+      const theirs = reviewed[d.id];
+      const ours = pixelCounts[d.id];
+      return theirs != null && ours != null && theirs !== ours;
+    }).map(d => name(d.baseName, d.project)),
+  };
+  return mismatch.missing.length || mismatch.unreviewed.length || mismatch.changed.length ? mismatch : null;
 }
