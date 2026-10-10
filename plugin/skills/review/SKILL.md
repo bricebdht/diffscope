@@ -133,7 +133,7 @@ Skip this step when `--no-comment` was passed, when the branch has no pull reque
 node "${CLAUDE_SKILL_DIR}/scripts/publish-review.mjs" "<manifest.json path>"
 ```
 
-It posts a comment on the PR, or updates the comment of the previous review, with your merge recommendation, summary and every diff's verdict and explanation (text only), a link to download the report artifact, and the suggestions file, to paste into Diffscope's **Claude review** dialog once the report is loaded. It prints the comment URL and `stale` (true when the PR got commits after the reviewed one).
+It posts a comment on the PR, or updates the comment of the previous review, with your merge recommendation and summary, the diffs that need changes or a human look (one line each, approved ones are only counted), a link to download the report artifact, and the suggestions file, to paste into Diffscope's **Claude review** dialog once the report is loaded. It prints the comment URL and `stale` (true when the PR got commits after the reviewed one).
 
 If it fails (no `gh`, no access to the repository), say why and give the review page path instead.
 
