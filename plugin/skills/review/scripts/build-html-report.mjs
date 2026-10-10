@@ -6,6 +6,9 @@
 // Usage: node build-html-report.mjs <manifest.json> [--open]
 //   Reads the suggestions file referenced by the manifest (suggestionsPath) and
 //   writes diffscope-review.html next to it. --open opens it in the browser.
+//   Also records the reviewed report in the suggestions file (`report`: every
+//   diff's changed pixel count), so Diffscope can check it's imported next to
+//   the same report.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -15,6 +18,11 @@ const VERDICTS = {
   reject: { label: 'Needs changes', order: 0 },
   unsure: { label: 'Unsure', order: 1 },
   approve: { label: 'Approve', order: 2 },
+};
+const MERGE = {
+  ready: { label: 'Ready to merge', tone: 'approve' },
+  changes: { label: 'Changes needed before merging', tone: 'reject' },
+  unsure: { label: 'Needs a human look before merging', tone: 'unsure' },
 };
 const CATEGORIES = {
   intended: 'Intended change',
@@ -85,6 +93,14 @@ function render(manifest, suggestions) {
     .map(([v, label], i) => `<button type="button" class="filter ${v}${i === 0 ? ' active' : ''}" data-filter="${v}">${esc(label)}</button>`)
     .join('');
 
+  // The review's own merge recommendation, or one derived from the verdicts.
+  const mergeVerdict = MERGE[suggestions.merge?.verdict] ? suggestions.merge.verdict
+    : counts.reject ? 'changes' : counts.unsure ? 'unsure' : 'ready';
+  const merge = `<div class="merge ${MERGE[mergeVerdict].tone}">
+      <span class="merge-label">${esc(MERGE[mergeVerdict].label)}</span>
+      ${suggestions.merge?.reason ? `<span class="merge-reason">${esc(suggestions.merge.reason)}</span>` : ''}
+    </div>`;
+
   const total = rows.length || 1;
   const tiles = Object.entries(VERDICTS).map(([v, { label }]) => `<div class="tile ${v}">
       <span class="tile-count">${counts[v]}</span>
@@ -106,6 +122,7 @@ function render(manifest, suggestions) {
   const source = [
     branch ? `<span class="source-item">Branch <code>${esc(branch)}</code></span>` : '',
     prHtml ? `<span class="source-item">${prHtml}</span>` : '',
+    typeof suggestions.commit === 'string' ? `<span class="source-item">Commit <code>${esc(suggestions.commit.slice(0, 7))}</code></span>` : '',
   ].filter(Boolean).join('');
 
   return `<!doctype html>
@@ -139,6 +156,11 @@ function render(manifest, suggestions) {
   .overview { background: linear-gradient(135deg, var(--accent-bg), var(--panel) 70%); border: 1px solid var(--accent-border); border-radius: 14px; padding: 20px; margin-bottom: 20px; }
   .overview-label { color: var(--accent); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
   .overview-text { font-size: 17px; line-height: 1.6; margin: 0 0 18px; }
+  .merge { border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; display: flex; flex-direction: column; gap: 2px; background: var(--amber-bg); color: var(--amber); }
+  .merge.reject { background: var(--red-bg); color: var(--red); }
+  .merge.approve { background: var(--green-bg); color: var(--green); }
+  .merge-label { font-size: 17px; font-weight: 700; }
+  .merge-reason { color: var(--text); }
   .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
   .tile { border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; background: var(--amber-bg); color: var(--amber); }
   .tile.reject { background: var(--red-bg); color: var(--red); }
@@ -191,6 +213,7 @@ function render(manifest, suggestions) {
   <p class="sub">${esc(reportName)}${generatedAt ? ` · ${esc(generatedAt)}` : ''}</p>
   <section class="overview">
     <div class="overview-label">✦ Claude's review · ${rows.length} diff${rows.length === 1 ? '' : 's'}</div>
+    ${merge}
     ${suggestions.summary ? `<p class="overview-text">${esc(suggestions.summary)}</p>` : ''}
     <div class="tiles">${tiles}</div>
     <div class="split">${split}</div>
@@ -225,6 +248,11 @@ function openInBrowser(file) {
   spawn(cmd, args, { detached: true, stdio: 'ignore' }).unref();
 }
 
+// What checkReportMatch() (src/lib/suggestions.ts) expects.
+const reportFingerprint = (manifest) => ({
+  diffs: Object.fromEntries(manifest.diffs.map(d => [d.id, d.changedPixels ?? null])),
+});
+
 function main() {
   const args = process.argv.slice(2);
   const manifestPath = args.find(a => !a.startsWith('--'));
@@ -238,6 +266,8 @@ function main() {
     throw new Error(`Suggestions file not found: ${manifest.suggestionsPath}`);
   }
   const suggestions = JSON.parse(fs.readFileSync(manifest.suggestionsPath, 'utf8'));
+  suggestions.report = reportFingerprint(manifest);
+  fs.writeFileSync(manifest.suggestionsPath, JSON.stringify(suggestions, null, 2) + '\n');
 
   const out = path.join(path.dirname(manifest.suggestionsPath), 'diffscope-review.html');
   fs.writeFileSync(out, render(manifest, suggestions));
