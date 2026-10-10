@@ -74,7 +74,7 @@ Then, in Diffscope, load the report as usual and click **Claude review** in the 
 
 ## Review comment on the pull request
 
-When the report comes from CI, `publish-review.mjs` posts a comment on the PR with Claude's merge recommendation, its summary and the diffs that need changes or a human look, one line each (approved ones are only counted). A new review updates the same comment. It has no images or per-diff explanations: to see them next to the screenshots, download the report artifact linked in the comment, drop it into Diffscope, click **Claude review** and paste the suggestions file, included at the end of the comment. This works the same on private repositories, where Diffscope can't fetch anything by itself.
+When the report comes from CI, `publish-review.mjs` posts a comment on the PR with Claude's merge recommendation, its summary and the diffs that need changes or a human look, one line each (approved ones are only counted). A new review updates the same comment. It's an indication for whoever merges, with no images or per-diff explanations: to see the screenshots, download the report artifact linked in the comment and drop it into Diffscope. Claude's detailed explanations stay with whoever ran the review, in the suggestions file and the review page.
 
 Reviews of a local report are not posted: nothing tells which commit its screenshots were taken on, and the PR's readers can't get it.
 

@@ -248,8 +248,7 @@ function openInBrowser(file) {
   spawn(cmd, args, { detached: true, stdio: 'ignore' }).unref();
 }
 
-// Must stay identical to reportFingerprint() in publish-review.mjs, and match
-// what checkReportMatch() (src/lib/suggestions.ts) expects.
+// What checkReportMatch() (src/lib/suggestions.ts) expects.
 const reportFingerprint = (manifest) => ({
   diffs: Object.fromEntries(manifest.diffs.map(d => [d.id, d.changedPixels ?? null])),
 });
