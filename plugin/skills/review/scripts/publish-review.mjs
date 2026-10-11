@@ -111,9 +111,6 @@ function renderComment({ manifest, suggestions, prHead }) {
   }
   if (suggestions.summary) head.push(md(suggestions.summary), '');
 
-  const report = ciRun.artifactUrl
-    ? `[download the \`${md(ciRun.artifact || 'report')}\` artifact](${ciRun.artifactUrl})`
-    : `download the \`${md(ciRun.artifact || 'report')}\` artifact of the [CI run](${ciRun.url})`;
   const screenshots = ciRun.artifactUrl
     ? `[download the \`${md(ciRun.artifact || 'report')}\` artifact](${ciRun.artifactUrl})`
     : `download the \`${md(ciRun.artifact || 'report')}\` artifact of the [CI run](${ciRun.url})`;
