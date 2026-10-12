@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Check, Copy, FileJson, Sparkles, Trash2, Upload } from 'lucide-react';
+import { AlertTriangle, Check, Copy, FileJson, Sparkles, Trash2, Upload } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -10,9 +10,10 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useReviewStore } from '@/store/review-store';
-import { parseSuggestionsFile } from '@/lib/suggestions';
+import { checkReportMatch, parseSuggestionsFile } from '@/lib/suggestions';
+import { computePixelCount } from '@/lib/report-parser';
 import { AI_VERDICT_LABELS } from '@/lib/ai-labels';
-import type { AiVerdict } from '@/lib/types';
+import type { AiReportMismatch, AiVerdict } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { AiVerdictBadge } from './AiVerdictBadge';
 
@@ -29,6 +30,40 @@ const SETUP_STEPS = [
     note: `Claude downloads the Playwright report of the branch's latest CI run (or pass a local report path), reviews every diff against your code changes, opens an HTML summary and writes ${SUGGESTIONS_FILE} next to the report.`,
   },
 ];
+
+// Singular and plural forms.
+const MISMATCH_LABELS: Record<keyof AiReportMismatch, [string, string]> = {
+  changed: ['has other screenshots than the one Claude reviewed', 'have other screenshots than the ones Claude reviewed'],
+  unreviewed: ["wasn't reviewed by Claude", "weren't reviewed by Claude"],
+  missing: ['was reviewed by Claude but is not in this report', 'were reviewed by Claude but are not in this report'],
+};
+const MAX_NAMES = 3;
+
+/** Warns that the suggestions were written for another report (or another run). */
+function MismatchWarning({ mismatch }: { mismatch: AiReportMismatch }) {
+  return (
+    <div className="rounded-lg border border-amber-800 bg-amber-950/30 p-3 text-sm">
+      <p className="flex items-center gap-1.5 font-medium text-amber-300 mb-1.5">
+        <AlertTriangle className="h-3.5 w-3.5" />
+        Claude reviewed another report
+      </p>
+      <p className="text-xs text-muted-foreground mb-2">
+        Its verdicts may not apply to these screenshots. Check that the report and the suggestions come from the same CI run.
+      </p>
+      <ul className="list-disc pl-5 space-y-1 text-xs">
+        {(Object.keys(MISMATCH_LABELS) as (keyof AiReportMismatch)[]).filter(k => mismatch[k].length).map(k => (
+          <li key={k}>
+            {mismatch[k].length} diff{mismatch[k].length === 1 ? '' : 's'} {MISMATCH_LABELS[k][mismatch[k].length === 1 ? 0 : 1]}:{' '}
+            <span className="text-muted-foreground">
+              {mismatch[k].slice(0, MAX_NAMES).join(', ')}
+              {mismatch[k].length > MAX_NAMES && ` and ${mismatch[k].length - MAX_NAMES} more`}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 function CopyCommand({ command }: { command: string }) {
   const [copied, setCopied] = useState(false);
@@ -80,9 +115,18 @@ export function ClaudeReviewDialog() {
       if (!diffs.some(d => ai.byId[d.id])) {
         throw new Error('None of these suggestions match the diffs of the loaded report. Was it generated from this report?');
       }
-      setAiSuggestions(ai);
-      // Nothing left to do here: the verdicts now show on the grid.
-      setOpen(false);
+      // Pixel counts are filled in the background after the report loads: count
+      // the ones that aren't there yet.
+      const pixelCounts: Record<string, number | null> = {};
+      if (ai.reportDiffs) {
+        await Promise.all(diffs.map(async d => {
+          pixelCounts[d.id] = d.pixelCount ?? await computePixelCount(d);
+        }));
+      }
+      const mismatch = checkReportMatch(diffs, ai, pixelCounts);
+      setAiSuggestions(mismatch ? { ...ai, mismatch } : ai);
+      // Nothing left to do here unless the report doesn't match: the verdicts now show on the grid.
+      if (!mismatch) setOpen(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not read the suggestions file.');
     }
@@ -155,6 +199,7 @@ export function ClaudeReviewDialog() {
 
         {aiSuggestions ? (
           <div className="flex flex-col gap-4 text-sm">
+            {aiSuggestions.mismatch && <MismatchWarning mismatch={aiSuggestions.mismatch} />}
             <div className="rounded-lg border border-border bg-muted/30 p-3">
               <p className="font-medium mb-2">
                 {withSuggestion.length} of {diffs.length} diffs have a suggestion

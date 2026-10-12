@@ -56,7 +56,7 @@ function listArtifacts(repo, runId) {
   const res = ghJson('api', `repos/${repo}/actions/runs/${runId}/artifacts?per_page=100`);
   return (res.artifacts || [])
     .filter(a => !a.expired)
-    .map(a => ({ name: a.name, size: a.size_in_bytes, score: reportScore(a.name) }));
+    .map(a => ({ id: a.id, name: a.name, size: a.size_in_bytes, score: reportScore(a.name) }));
 }
 
 // The pull request of a branch (open first, then the most recent closed or merged one), or null.
@@ -156,6 +156,8 @@ function main() {
       headSha: r.headSha,
     },
     artifact: artifact.name,
+    // Downloads the artifact as a zip (needs to be logged in to GitHub with access to the repository).
+    artifactUrl: `https://github.com/${repo}/actions/runs/${r.databaseId}/artifacts/${artifact.id}`,
     otherArtifacts: picked.artifacts.filter(a => a.name !== artifact.name).map(a => a.name),
     // false when the run tested another commit than the local HEAD (e.g. new local commits).
     matchesLocalHead: localHead ? localHead === r.headSha : null,
