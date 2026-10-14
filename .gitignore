@@ -11,6 +11,11 @@ test-fixture/test-results/
 test-fixture/e2e/**/*-snapshots/
 test-fixture/node_modules/
 
+# E2E outputs (references are captured from main on every run, see scripts/e2e.mjs)
+/playwright-report/
+/test-results/
+/e2e-snapshots/
+
 # Logs
 logs
 *.log
